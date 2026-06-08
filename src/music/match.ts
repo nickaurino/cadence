@@ -1,3 +1,5 @@
+import type { TrackFeatures } from '../../modules/cadence-music-kit';
+
 // Cadence-to-song tempo matching.
 //
 // Running cadence (~160-180 spm) rarely lines up with a song's literal BPM,
@@ -58,4 +60,37 @@ export function matchesCadence(
   options: MatchOptions = DEFAULT_MATCH_OPTIONS
 ): boolean {
   return matchedTempo(songBpm, targetBpm, options) !== null;
+}
+
+// How much each signal counts toward the final rank. A convex combination
+// (sums to 1) so the score stays in [0,1]. Tunable; instrument skips later.
+export const GROOVE_WEIGHTS = {
+  closeness: 0.5,
+  pulse: 0.3,
+  stability: 0.2,
+};
+
+function clamp01(x: number): number {
+  if (!Number.isFinite(x)) return 0;
+  return Math.min(1, Math.max(0, x));
+}
+
+// Ranks a cadence-matched song in [0,1], higher is better. Blends how tightly
+// the beat lands on the target (normalized against the match window) with how
+// clear and steady that beat is. Callers must gate non-matches out first; a
+// non-match contributes 0 closeness here.
+export function compositeScore(
+  features: TrackFeatures,
+  targetBpm: number,
+  options: MatchOptions = DEFAULT_MATCH_OPTIONS
+): number {
+  const window = targetBpm * options.tolerance;
+  const delta = closeness(features.bpm, targetBpm, options);
+  const closenessTerm = window > 0 && Number.isFinite(delta) ? clamp01(1 - delta / window) : 0;
+
+  return (
+    GROOVE_WEIGHTS.closeness * closenessTerm +
+    GROOVE_WEIGHTS.pulse * clamp01(features.pulseClarity) +
+    GROOVE_WEIGHTS.stability * clamp01(features.tempoStability)
+  );
 }

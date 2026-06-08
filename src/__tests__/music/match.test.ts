@@ -1,4 +1,11 @@
-import { matchedTempo, matchesCadence, closeness } from '@/music/match';
+import {
+  matchedTempo,
+  matchesCadence,
+  closeness,
+  compositeScore,
+  GROOVE_WEIGHTS,
+} from '@/music/match';
+import type { TrackFeatures } from '../../../modules/cadence-music-kit';
 
 describe('matchedTempo', () => {
   it('matches a song at the target tempo', () => {
@@ -60,5 +67,46 @@ describe('closeness', () => {
 
   it('returns Infinity for non-matches', () => {
     expect(closeness(120, 180)).toBe(Infinity);
+  });
+});
+
+describe('compositeScore', () => {
+  const opts = { multiples: [1, 2, 0.5], tolerance: 0.06 };
+
+  function feat(o: Partial<TrackFeatures> = {}): TrackFeatures {
+    return { bpm: 180, pulseClarity: 0.5, tempoStability: 0.5, ...o };
+  }
+
+  it('scores a perfect BPM match with perfect groove at 1', () => {
+    const score = compositeScore(feat({ bpm: 180, pulseClarity: 1, tempoStability: 1 }), 180, opts);
+    expect(score).toBeCloseTo(1, 5);
+  });
+
+  it('scores a perfect BPM match with zero groove at the closeness weight', () => {
+    const score = compositeScore(feat({ bpm: 180, pulseClarity: 0, tempoStability: 0 }), 180, opts);
+    expect(score).toBeCloseTo(GROOVE_WEIGHTS.closeness, 5);
+  });
+
+  it('ranks better groove above a marginally tighter BPM', () => {
+    const tight = compositeScore(feat({ bpm: 180, pulseClarity: 0.1, tempoStability: 0.1 }), 180, opts);
+    const groovy = compositeScore(feat({ bpm: 178, pulseClarity: 1, tempoStability: 1 }), 180, opts);
+    expect(groovy).toBeGreaterThan(tight);
+  });
+
+  it('weights are a convex combination (sum to 1)', () => {
+    const sum = GROOVE_WEIGHTS.closeness + GROOVE_WEIGHTS.pulse + GROOVE_WEIGHTS.stability;
+    expect(sum).toBeCloseTo(1, 5);
+  });
+
+  it('clamps groove inputs outside [0,1] so the score stays in [0,1]', () => {
+    const high = compositeScore(feat({ bpm: 180, pulseClarity: 5, tempoStability: 5 }), 180, opts);
+    const low = compositeScore(feat({ bpm: 180, pulseClarity: -5, tempoStability: -5 }), 180, opts);
+    expect(high).toBeLessThanOrEqual(1);
+    expect(low).toBeGreaterThanOrEqual(0);
+  });
+
+  it('uses the matched multiple, so a double-time song at the target scores full closeness', () => {
+    const score = compositeScore(feat({ bpm: 90, pulseClarity: 1, tempoStability: 1 }), 180, opts);
+    expect(score).toBeCloseTo(1, 5);
   });
 });
