@@ -18,6 +18,8 @@ enum TempoAnalyzer {
   // half/double-time logic, so a tight range here keeps octave errors down.
   private static let minBpm = 60.0
   private static let maxBpm = 200.0
+  // Number of overlapping windows used to gauge tempo stability across a clip.
+  private static let stabilityWindowCount = 4
 
   static func features(forPreviewURL urlString: String) async throws -> TrackFeatures? {
     guard let url = URL(string: urlString) else { return nil }
@@ -100,6 +102,8 @@ enum TempoAnalyzer {
         }
       }
 
+      // Spectral flux: sum of positive bin-to-bin magnitude increases. Peaks
+      // line up with note/beat onsets.
       var sum: Float = 0
       for i in 0..<halfN {
         let delta = mag[i] - prevMag[i]
@@ -165,17 +169,16 @@ enum TempoAnalyzer {
   private static func stabilityScore(
     flux: [Float], minLag: Int, maxLag: Int, globalLag: Int
   ) -> Double {
-    let windowCount = 4
     let n = flux.count
     // Each window must be longer than maxLag to autocorrelate at that lag.
-    let windowLen = max(maxLag + 2, (n * 2) / (windowCount + 1))
+    let windowLen = max(maxLag + 2, (n * 2) / (stabilityWindowCount + 1))
     guard windowLen < n else { return 1.0 } // too short to segment; treat as stable
-    let step = (n - windowLen) / (windowCount - 1)
+    let step = (n - windowLen) / (stabilityWindowCount - 1)
     guard step > 0 else { return 1.0 }
 
     var agree = 0
     var counted = 0
-    for w in 0..<windowCount {
+    for w in 0..<stabilityWindowCount {
       let start = w * step
       let end = start + windowLen
       guard end <= n else { break }
