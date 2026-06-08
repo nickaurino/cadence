@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Cadence",
+    "slug": "cadence",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "cadence",
+    "platforms": ["ios"],
+    "ios": {
+      "bundleIdentifier": "com.nickaurino.cadence",
+      "infoPlist": {
+        "NSAppleMusicUsageDescription": "Cadence plays songs that match your walking and running pace.",
+        "NSMotionUsageDescription": "Cadence uses motion sensors to detect your walking and running pace.",
+        "NSHealthShareUsageDescription": "Cadence reads step count to match music to your cadence."
+      },
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sensors"
+    ]
+  }
+}

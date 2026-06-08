@@ -1,0 +1,10 @@
+{
+  "name": "cadence-music-kit",
+  "version": "1.0.0",
+  "description": "Bridges Apple MusicKit to React Native for Cadence",
+  "main": "index.ts",
+  "private": true,
+  "license": "MIT",
+  "author": "Nick Aurino",
+  "homepage": "https://github.com/nickaurino/cadence"
+}
