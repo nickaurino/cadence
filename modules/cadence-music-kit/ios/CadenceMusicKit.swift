@@ -52,8 +52,13 @@ public final class CadenceMusicKitModule: Module {
       }
     }
 
-    AsyncFunction("analyzeBpm") { (previewUrl: String) async throws -> Double? in
-      return try await TempoAnalyzer.bpm(forPreviewURL: previewUrl)
+    AsyncFunction("analyzeTrack") { (previewUrl: String) async throws -> [String: Any]? in
+      guard let f = try await TempoAnalyzer.features(forPreviewURL: previewUrl) else { return nil }
+      return [
+        "bpm": f.bpm,
+        "pulseClarity": f.pulseClarity,
+        "tempoStability": f.tempoStability,
+      ]
     }
 
     AsyncFunction("playTrack") { (trackId: String) async throws in
