@@ -8,12 +8,18 @@ import Accelerate
 enum TempoAnalyzer {
   private enum AnalyzerError: Error { case decode }
 
+  struct TrackFeatures {
+    let bpm: Double
+    let pulseClarity: Double   // [0,1] prominence of the dominant autocorrelation peak
+    let tempoStability: Double // [0,1] agreement of windowed best-lags with the global lag
+  }
+
   // Tempo search range. Songs outside this get folded in by the JS matcher's
   // half/double-time logic, so a tight range here keeps octave errors down.
   private static let minBpm = 60.0
   private static let maxBpm = 200.0
 
-  static func bpm(forPreviewURL urlString: String) async throws -> Double? {
+  static func features(forPreviewURL urlString: String) async throws -> TrackFeatures? {
     guard let url = URL(string: urlString) else { return nil }
 
     let (data, _) = try await URLSession.shared.data(from: url)
@@ -23,7 +29,7 @@ enum TempoAnalyzer {
     defer { try? FileManager.default.removeItem(at: tmp) }
 
     let (samples, sampleRate) = try monoSamples(from: tmp)
-    return estimateTempo(samples: samples, sampleRate: sampleRate)
+    return estimateFeatures(samples: samples, sampleRate: sampleRate)
   }
 
   // Reads an audio file into a single mono Float channel.
@@ -55,7 +61,7 @@ enum TempoAnalyzer {
     return (mono, format.sampleRate)
   }
 
-  private static func estimateTempo(samples: [Float], sampleRate: Double) -> Double? {
+  private static func estimateFeatures(samples: [Float], sampleRate: Double) -> TrackFeatures? {
     let frameSize = 1024
     let hop = 512
     guard samples.count > frameSize * 8 else { return nil }
@@ -94,8 +100,6 @@ enum TempoAnalyzer {
         }
       }
 
-      // Spectral flux: sum of positive bin-to-bin magnitude increases. Peaks
-      // line up with note/beat onsets.
       var sum: Float = 0
       for i in 0..<halfN {
         let delta = mag[i] - prevMag[i]
@@ -108,7 +112,6 @@ enum TempoAnalyzer {
 
     guard flux.count > 16 else { return nil }
 
-    // Remove the mean so steady energy doesn't swamp the autocorrelation.
     var mean: Float = 0
     vDSP_meanv(flux, 1, &mean, vDSP_Length(flux.count))
     var negMean = -mean
@@ -119,7 +122,9 @@ enum TempoAnalyzer {
     let maxLag = min(flux.count - 1, Int((60.0 / minBpm) * frameRate))
     guard maxLag > minLag else { return nil }
 
-    // The lag with the strongest self-similarity is the beat period.
+    // Autocorrelation over the lag range. Keep every value so we can measure the
+    // dominant peak's prominence (pulse clarity), not just find the max.
+    var corrByLag = [Float](repeating: 0, count: maxLag - minLag + 1)
     var bestLag = -1
     var bestCorr = -Float.greatestFiniteMagnitude
     for lag in minLag...maxLag {
@@ -127,6 +132,7 @@ enum TempoAnalyzer {
       flux.withUnsafeBufferPointer { fp in
         vDSP_dotpr(fp.baseAddress!, 1, fp.baseAddress! + lag, 1, &corr, vDSP_Length(flux.count - lag))
       }
+      corrByLag[lag - minLag] = corr
       if corr > bestCorr {
         bestCorr = corr
         bestLag = lag
@@ -134,7 +140,62 @@ enum TempoAnalyzer {
     }
     guard bestLag > 0 else { return nil }
 
-    let bpm = 60.0 * frameRate / Double(bestLag)
-    return (bpm * 10).rounded() / 10
+    let bpm = (60.0 * frameRate / Double(bestLag) * 10).rounded() / 10
+    let pulseClarity = clarityScore(corrByLag: corrByLag, bestCorr: bestCorr)
+    let tempoStability = stabilityScore(
+      flux: flux, minLag: minLag, maxLag: maxLag, globalLag: bestLag
+    )
+
+    return TrackFeatures(bpm: bpm, pulseClarity: pulseClarity, tempoStability: tempoStability)
+  }
+
+  // Prominence of the dominant autocorrelation peak, in [0,1]. 0 = flat (no clear
+  // pulse), approaching 1 = a single dominant peak far above the average.
+  private static func clarityScore(corrByLag: [Float], bestCorr: Float) -> Double {
+    guard bestCorr > 0, !corrByLag.isEmpty else { return 0 }
+    var mean: Float = 0
+    vDSP_meanv(corrByLag, 1, &mean, vDSP_Length(corrByLag.count))
+    if mean < 0 { mean = 0 }
+    let score = 1.0 - Double(mean / bestCorr)
+    return min(1.0, max(0.0, score))
+  }
+
+  // Fraction of overlapping windows whose dominant lag agrees with the global
+  // lag (within +/-1 bin), in [0,1]. 1 = rock-steady tempo, low = drifts/breaks.
+  private static func stabilityScore(
+    flux: [Float], minLag: Int, maxLag: Int, globalLag: Int
+  ) -> Double {
+    let windowCount = 4
+    let n = flux.count
+    // Each window must be longer than maxLag to autocorrelate at that lag.
+    let windowLen = max(maxLag + 2, (n * 2) / (windowCount + 1))
+    guard windowLen < n else { return 1.0 } // too short to segment; treat as stable
+    let step = (n - windowLen) / (windowCount - 1)
+    guard step > 0 else { return 1.0 }
+
+    var agree = 0
+    var counted = 0
+    for w in 0..<windowCount {
+      let start = w * step
+      let end = start + windowLen
+      guard end <= n else { break }
+      counted += 1
+      var bestLag = -1
+      var bestCorr = -Float.greatestFiniteMagnitude
+      flux.withUnsafeBufferPointer { fp in
+        let base = fp.baseAddress! + start
+        for lag in minLag...maxLag {
+          var corr: Float = 0
+          vDSP_dotpr(base, 1, base + lag, 1, &corr, vDSP_Length(windowLen - lag))
+          if corr > bestCorr {
+            bestCorr = corr
+            bestLag = lag
+          }
+        }
+      }
+      if abs(bestLag - globalLag) <= 1 { agree += 1 }
+    }
+    guard counted > 0 else { return 1.0 }
+    return Double(agree) / Double(counted)
   }
 }
