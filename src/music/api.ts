@@ -1,8 +1,8 @@
 import type { MusicTrack, Vibe, MatchSettings } from '@/types';
 import { DEFAULT_MATCH_SETTINGS } from '@/types';
-import { search, type RawSong } from '../../modules/cadence-music-kit';
-import { PreviewAnalysisProvider, resolveBpm, type BpmProvider } from './bpm';
-import { closeness, matchesCadence, matchedTempo, type MatchOptions } from './match';
+import { search, type RawSong, type TrackFeatures } from '../../modules/cadence-music-kit';
+import { PreviewAnalysisProvider, resolveFeatures, type FeatureProvider } from './features';
+import { matchesCadence, matchedTempo, compositeScore, type MatchOptions } from './match';
 
 // Turns user settings into the multiples + tolerance the matcher uses.
 function settingsToOptions(s: MatchSettings): MatchOptions {
@@ -51,37 +51,45 @@ async function gatherCandidates(terms: string[], page: number): Promise<RawSong[
   return unique;
 }
 
-// Resolves BPM for each candidate, keeps the ones that match the target
-// cadence (allowing half/double-time), and sorts by how tightly they match.
+// Resolves features for each candidate, keeps the ones whose BPM matches the
+// target cadence (allowing half/double-time), and sorts by composite groove
+// score (BPM closeness + pulse clarity + tempo stability), best first.
 async function matchSongs(
   songs: RawSong[],
   targetBpm: number,
-  provider: BpmProvider,
+  provider: FeatureProvider,
   options: MatchOptions
 ): Promise<MusicTrack[]> {
-  const withBpm = await Promise.all(
-    songs.map(async (song) => ({ song, bpm: await resolveBpm(song, provider) }))
+  const withFeatures = await Promise.all(
+    songs.map(async (song) => ({ song, features: await resolveFeatures(song, provider) }))
   );
 
-  return withBpm
-    .filter(({ bpm }) => bpm !== null && matchesCadence(bpm, targetBpm, options))
-    .sort((a, b) => closeness(a.bpm!, targetBpm, options) - closeness(b.bpm!, targetBpm, options))
-    .map(({ song, bpm }) => {
-      const effective = matchedTempo(bpm!, targetBpm, options)!;
+  return withFeatures
+    .filter(
+      (x): x is { song: RawSong; features: TrackFeatures } =>
+        x.features !== null && matchesCadence(x.features.bpm, targetBpm, options)
+    )
+    .sort(
+      (a, b) =>
+        compositeScore(b.features, targetBpm, options) -
+        compositeScore(a.features, targetBpm, options)
+    )
+    .map(({ song, features }) => {
+      const effective = matchedTempo(features.bpm, targetBpm, options)!;
       return {
         id: song.id,
         name: song.name,
         artist: song.artist,
         albumArtUrl: song.albumArtUrl,
-        tempo: bpm!,
-        matchMultiple: Math.round((effective / bpm!) * 100) / 100, // 1, 2, or 0.5
+        tempo: features.bpm,
+        matchMultiple: Math.round((effective / features.bpm) * 100) / 100, // 1, 2, or 0.5
       };
     });
 }
 
 export async function getRecommendations(
   { targetBpm, vibe, page = 0, settings = DEFAULT_MATCH_SETTINGS }: RecommendationParams,
-  provider: BpmProvider = defaultProvider
+  provider: FeatureProvider = defaultProvider
 ): Promise<MusicTrack[]> {
   try {
     const candidates = await gatherCandidates(VIBE_TO_TERMS[vibe], page);
