@@ -69,6 +69,7 @@ async function matchSongs(
       (x): x is { song: RawSong; features: TrackFeatures } =>
         x.features !== null && matchesCadence(x.features.bpm, targetBpm, options)
     )
+    // Descending: a higher composite score is a better match (was ascending by BPM closeness).
     .sort(
       (a, b) =>
         compositeScore(b.features, targetBpm, options) -
