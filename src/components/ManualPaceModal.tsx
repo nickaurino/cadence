@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Modal,
   View,
@@ -37,6 +37,24 @@ interface Props {
 
 export function ManualPaceModal({ visible, onClose, onConfirm }: Props) {
   const [selected, setSelected] = useState(DEFAULT);
+  const scrollRef = useRef<ScrollView>(null);
+
+  function scrollToValue(v: number) {
+    scrollRef.current?.scrollTo?.({ y: (v - MIN) * ITEM_HEIGHT, animated: false });
+  }
+
+  // Position the wheel under the center band whenever the sheet opens. Done
+  // imperatively through a ref rather than a `contentOffset` prop: a render-time
+  // contentOffset gets re-applied by iOS on every re-render, and since each
+  // scroll updates `selected` (a re-render), the wheel would be yanked back to
+  // its start on every drag. Depending only on `visible` keeps repositioning
+  // out of the drag path.
+  useEffect(() => {
+    if (!visible) return;
+    const id = requestAnimationFrame(() => scrollToValue(selected));
+    return () => cancelAnimationFrame(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   function onScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
     const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_HEIGHT);
@@ -59,6 +77,8 @@ export function ManualPaceModal({ visible, onClose, onConfirm }: Props) {
           <View style={styles.wheelWrap}>
             <View style={styles.centerBand} pointerEvents="none" />
             <ScrollView
+              ref={scrollRef}
+              testID="pace-wheel"
               style={{ height: WHEEL_HEIGHT }}
               contentContainerStyle={{ paddingVertical: PAD }}
               snapToInterval={ITEM_HEIGHT}
@@ -66,7 +86,7 @@ export function ManualPaceModal({ visible, onClose, onConfirm }: Props) {
               showsVerticalScrollIndicator={false}
               onScroll={onScroll}
               scrollEventThrottle={16}
-              contentOffset={{ x: 0, y: (DEFAULT - MIN) * ITEM_HEIGHT }}
+              onLayout={() => scrollToValue(selected)}
             >
               {VALUES.map((v) => {
                 const active = v === selected;
