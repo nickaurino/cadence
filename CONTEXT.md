@@ -39,8 +39,15 @@ tied to implementation. Keep entries behavioral.
   User-toggleable in settings.
 
 - **Pace lock** — user *manually* freezes the managed cadence (treadmill /
-  testing); live pace changes stop re-matching the music. Distinct from "in the
-  pocket" (below), which is an automatic, momentary state — not a user action.
+  testing); live pace changes stop re-matching the music. One concept with two
+  entry points: the **lock control** (freeze at your current pace) and the
+  **manual-pace wheel** (freeze at a value you dial in). Either way the screen
+  reads as "locked"; unlocking resumes auto-follow. Distinct from "in the pocket"
+  (below), which is an automatic, momentary state — not a user action.
+
+- **Manual pace** — engaging Pace lock at a value you choose via the pace wheel,
+  rather than at your current detected pace. It is an entry point to Pace lock,
+  not a separate mode.
 
 - **In the pocket** — the natural, automatic state where perceived cadence sits
   within the match window of managed cadence: your steps are landing on the
@@ -61,3 +68,25 @@ tied to implementation. Keep entries behavioral.
   onto managed once you are back in the pocket. The small "Matching N" chip below
   it shows managed during a shift — i.e. exactly when the hero has gone live and
   the two values differ.
+
+- **In-the-pocket ring** — an arc/ring around the hero number that reflects how
+  locked your steps are to the matched tempo: present/pulsing when in the pocket,
+  receding while you shift pace. Communicates *match quality*, not session
+  progress.
+
+- **Song-position bar** — a thin scrubber on the now-playing track card showing
+  playback position within the current song. This is the only literal progress
+  bar in the app. There is deliberately **no session-progress bar**: a session is
+  open-ended (you run until End), so there is no goal to fill toward. Elapsed
+  duration is shown in the end-of-session summary, not live on the active screen.
+
+- **End session** — the explicit terminator. Stops the music, clears the saved
+  session so it will not auto-resume (see Session resume), and shows the
+  end-of-session summary. Engaged by **hold-to-end** (press and hold ~1.5s with a
+  filling-ring animation) to prevent accidental mid-run taps. The only thing that
+  ends a session; backgrounding or killing the app does not.
+
+- **Session resume** — a session survives the app being backgrounded or killed and
+  picks back up automatically on reopen (music kept playing via the system
+  player). Only End session truly ends it; an abandoned session older than a few
+  hours is discarded rather than resumed. (See ADR-tracked background-sessions work.)
