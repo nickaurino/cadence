@@ -29,15 +29,17 @@ Cadence's visual system (dark, default):
 | border      | `#2a2a2e` | Graphite    | Dividers, ring track. |
 | text        | `#ece4d6` | Bed Light   | George cream — the warm identity hint. |
 | muted       | `#8c867e` | Ash         | Secondary labels, inactive. |
-| accent      | `#E6B24C` | Cadence Gold| The energy + in-the-pocket signal: hero ring, CTA, lock state. |
-| accentDim   | `#262019` | Ember Coal  | Pressed/disabled accent within the base. |
+| accent      | `#EFA836` | Cadence Gold (Marigold) | The energy + in-the-pocket signal: hero ring, CTA, lock state. Saturated marigold for motion, not a muted brass. |
+| accentDim   | `#2a2114` | Ember Coal  | Pressed/disabled accent within the base. |
 
 Accent usage follows ADR 0002 and CONTEXT.md: gold is the **in-the-pocket** signal
-— full Cadence Gold on the hero ring when locked, desaturated toward Ash while
-shifting pace. CTA is a solid gold fill with Onyx (`#0c0c0d`) text.
+— full Cadence Gold (`#EFA836`) on the hero ring when locked, desaturated toward
+Ash while shifting pace. CTA is a solid gold fill with Onyx (`#0c0c0d`) text.
 
-Contrast (computed, vs `#0c0c0d`): accent ≈ 10:1, text ≈ 14:1, Onyx-on-gold CTA
-label ≈ 10:1 — all clear AA.
+Contrast (computed, vs `#0c0c0d`): accent ≈ 9.6:1, text ≈ 14:1, Onyx-on-gold CTA
+label ≈ 9.6:1 — all clear AA. (Marigold `#EFA836` was chosen over the softer
+`#E6B24C` for more motion/energy; alternatives recorded in
+`docs/design-research/gold-refine.html`.)
 
 A **light theme** (Silver base, option C) is deferred but the system is built as
 tokens so it can drop in later (see ADR 0002's reversibility note).
