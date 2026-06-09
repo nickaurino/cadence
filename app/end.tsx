@@ -1,6 +1,7 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SessionSummary } from '@/types';
+import { colors } from '@/theme/colors';
 
 function parseSummary(raw?: string): SessionSummary | null {
   if (!raw) return null;
@@ -57,14 +58,14 @@ function Stat({ label, value, unit }: { label: string; value: string; unit?: str
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a', padding: 32, justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 40, fontWeight: '800', color: '#fff', marginBottom: 28 },
-  body: { fontSize: 17, color: '#aaa', textAlign: 'center', marginBottom: 40, lineHeight: 26 },
-  stats: { width: '100%', backgroundColor: '#161616', borderRadius: 16, paddingVertical: 6, marginBottom: 40 },
+  container: { flex: 1, backgroundColor: colors.background, padding: 32, justifyContent: 'center', alignItems: 'center' },
+  title: { fontSize: 40, fontWeight: '800', color: colors.text, marginBottom: 28 },
+  body: { fontSize: 17, color: colors.muted, textAlign: 'center', marginBottom: 40, lineHeight: 26 },
+  stats: { width: '100%', backgroundColor: colors.surface, borderRadius: 16, paddingVertical: 6, marginBottom: 40 },
   stat: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 20 },
-  statLabel: { color: '#888', fontSize: 15 },
-  statValue: { color: '#fff', fontSize: 20, fontWeight: '700' },
-  statUnit: { color: '#1DB954', fontSize: 14, fontWeight: '600' },
-  doneBtn: { backgroundColor: '#1DB954', borderRadius: 50, paddingVertical: 16, paddingHorizontal: 40 },
-  doneBtnText: { color: '#000', fontSize: 17, fontWeight: '600' },
+  statLabel: { color: colors.muted, fontSize: 15 },
+  statValue: { color: colors.text, fontSize: 20, fontWeight: '700' },
+  statUnit: { color: colors.accent, fontSize: 14, fontWeight: '600' },
+  doneBtn: { backgroundColor: colors.accent, borderRadius: 50, paddingVertical: 16, paddingHorizontal: 40 },
+  doneBtnText: { color: colors.onAccent, fontSize: 17, fontWeight: '600' },
 });

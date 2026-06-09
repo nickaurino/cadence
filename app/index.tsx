@@ -5,6 +5,7 @@ import { hasCompletedOnboarding } from '@/storage/store';
 import { isAuthorized } from '@/music/auth';
 import { loadPersisted, shouldResume, clearPersisted } from '@/storage/session-store';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import { colors } from '@/theme/colors';
 
 export default function Index() {
   const [destination, setDestination] = useState<string | null>(null);
@@ -28,7 +29,7 @@ export default function Index() {
   if (!destination) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator color="#1DB954" />
+        <ActivityIndicator color={colors.accent} />
         <Text style={styles.loadingText}>Getting things ready</Text>
       </View>
     );
@@ -37,6 +38,6 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
-  loading: { flex: 1, backgroundColor: '#0a0a0a', alignItems: 'center', justifyContent: 'center', gap: 14 },
-  loadingText: { color: '#888', fontSize: 15 },
+  loading: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', gap: 14 },
+  loadingText: { color: colors.muted, fontSize: 15 },
 });

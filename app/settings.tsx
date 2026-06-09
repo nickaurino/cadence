@@ -3,6 +3,7 @@ import { View, Text, Pressable, Switch, StyleSheet, ScrollView } from 'react-nat
 import { router } from 'expo-router';
 import { MatchSettings, DEFAULT_MATCH_SETTINGS } from '@/types';
 import { getMatchSettings, saveMatchSettings } from '@/storage/store';
+import { colors } from '@/theme/colors';
 
 const STRICTNESS: { label: string; tolerance: number }[] = [
   { label: 'Tight', tolerance: 0.03 },
@@ -152,13 +153,13 @@ function Row({
         <Text style={styles.rowTitle}>{title}</Text>
         <Text style={styles.rowSub}>{sub}</Text>
       </View>
-      <Switch value={value} onValueChange={onValueChange} trackColor={{ true: '#1DB954', false: '#333' }} />
+      <Switch value={value} onValueChange={onValueChange} trackColor={{ true: colors.accent, false: colors.border }} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a' },
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -167,23 +168,23 @@ const styles = StyleSheet.create({
     paddingTop: 64,
     paddingBottom: 16,
   },
-  headerTitle: { color: '#fff', fontSize: 28, fontWeight: '800' },
-  done: { color: '#1DB954', fontSize: 17, fontWeight: '600' },
+  headerTitle: { color: colors.text, fontSize: 28, fontWeight: '800' },
+  done: { color: colors.accent, fontSize: 17, fontWeight: '600' },
   content: { padding: 24, paddingTop: 8 },
-  sectionLabel: { color: '#666', fontSize: 12, fontWeight: '600', letterSpacing: 1, marginBottom: 10, marginTop: 24 },
-  group: { backgroundColor: '#161616', borderRadius: 14, overflow: 'hidden' },
+  sectionLabel: { color: colors.faint, fontSize: 12, fontWeight: '600', letterSpacing: 1, marginBottom: 10, marginTop: 24 },
+  group: { backgroundColor: colors.surface, borderRadius: 14, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, gap: 16 },
-  rowBorder: { borderBottomWidth: 1, borderBottomColor: '#262626' },
+  rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
   rowText: { flex: 1 },
-  rowTitle: { color: '#fff', fontSize: 16, fontWeight: '500' },
-  rowSub: { color: '#888', fontSize: 13, marginTop: 3, lineHeight: 18 },
-  warning: { color: '#f5a623', fontSize: 13, marginTop: 10, lineHeight: 18 },
-  segment: { flexDirection: 'row', backgroundColor: '#161616', borderRadius: 12, padding: 4, gap: 4 },
+  rowTitle: { color: colors.text, fontSize: 16, fontWeight: '500' },
+  rowSub: { color: colors.muted, fontSize: 13, marginTop: 3, lineHeight: 18 },
+  warning: { color: colors.muted, fontSize: 13, marginTop: 10, lineHeight: 18 },
+  segment: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 12, padding: 4, gap: 4 },
   segmentBtn: { flex: 1, paddingVertical: 12, borderRadius: 9, alignItems: 'center' },
-  segmentBtnActive: { backgroundColor: '#1DB954' },
-  segmentText: { color: '#aaa', fontSize: 15, fontWeight: '600' },
-  segmentTextActive: { color: '#000' },
-  hint: { color: '#666', fontSize: 13, marginTop: 10, lineHeight: 18 },
+  segmentBtnActive: { backgroundColor: colors.accent },
+  segmentText: { color: colors.muted, fontSize: 15, fontWeight: '600' },
+  segmentTextActive: { color: colors.onAccent },
+  hint: { color: colors.faint, fontSize: 13, marginTop: 10, lineHeight: 18 },
   reset: { marginTop: 40, alignItems: 'center', paddingVertical: 14 },
-  resetText: { color: '#ff6b6b', fontSize: 16 },
+  resetText: { color: colors.danger, fontSize: 16 },
 });
