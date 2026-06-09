@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MatchSettings, DEFAULT_MATCH_SETTINGS } from '@/types';
 import { getMatchSettings, saveMatchSettings, resetOnboarding, clearCoachmarksSeen } from '@/storage/store';
+import { triggerReplayTour } from '@/tour/TourContext';
 import { colors } from '@/theme/colors';
 
 const STRICTNESS: { label: string; tolerance: number }[] = [
@@ -28,6 +29,11 @@ export default function Settings() {
   }
 
   const enabledModes = [settings.exact, settings.halfTime, settings.doubleTime].filter(Boolean).length;
+
+  function replayTour() {
+    triggerReplayTour();
+    Alert.alert('Tour reset', "You'll see the in-session tips again on your next run.");
+  }
 
   function confirmResetApp() {
     Alert.alert(
@@ -158,6 +164,12 @@ export default function Settings() {
 
         <Text style={styles.sectionLabel}>ABOUT</Text>
         <View style={styles.group}>
+          <Pressable style={[styles.aboutRow, styles.rowDivider]} onPress={replayTour}>
+            <View style={styles.rowText}>
+              <Text style={styles.rowTitle}>Replay tour</Text>
+              <Text style={styles.rowSub}>See the in-session tips again on your next run.</Text>
+            </View>
+          </Pressable>
           <Pressable style={styles.aboutRow} onPress={() => router.push('/credits')}>
             <Text style={styles.rowTitle}>Credits</Text>
             <Text style={styles.chevron}>›</Text>
@@ -212,6 +224,7 @@ const styles = StyleSheet.create({
   sectionLabel: { color: colors.faint, fontSize: 12, fontWeight: '600', letterSpacing: 1, marginBottom: 10, marginTop: 24 },
   group: { backgroundColor: colors.surface, borderRadius: 14, overflow: 'hidden' },
   aboutRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 16 },
+  rowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   chevron: { color: colors.faint, fontSize: 22, fontWeight: '400' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, gap: 16 },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
