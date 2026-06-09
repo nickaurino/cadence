@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text } from 'react-native';
+import * as Haptics from 'expo-haptics';
+
 import { colors } from '@/theme/colors';
 
 interface HoldToEndProps {
@@ -10,6 +12,19 @@ interface HoldToEndProps {
 
 const CANCEL_DURATION = 200;
 
+// Fire haptics safely: no-op if the native module isn't in the build yet (the
+// JS package is installed, but the buzz only works after a native rebuild).
+function haptic(run: () => Promise<unknown>) {
+  try {
+    run().catch(() => {});
+  } catch {
+    /* native haptics module not present */
+  }
+}
+
+// A press-and-hold confirm. The destructive intent reads through a red bar that
+// sweeps the full length as you hold; a light tick on engage and a success buzz
+// on completion make finishing feel deliberate and earned. Release early cancels.
 export function HoldToEnd({
   onEnd,
   label = 'Hold to end session',
@@ -36,11 +51,13 @@ export function HoldToEnd({
   const onComplete = () => {
     if (firedRef.current) return;
     firedRef.current = true;
+    haptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
     onEnd();
   };
 
   const handlePressIn = () => {
     setHeld(true);
+    haptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
     Animated.timing(progress, {
       toValue: 1,
       duration,
@@ -74,16 +91,10 @@ export function HoldToEnd({
       accessibilityLabel={label}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      style={styles.pill}
+      style={[styles.pill, held && styles.pillHeld]}
     >
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.fill, { width: fillWidth }]}
-      />
-      <Text
-        style={[styles.label, held && styles.labelHeld]}
-        numberOfLines={1}
-      >
+      <Animated.View pointerEvents="none" style={[styles.fill, { width: fillWidth }]} />
+      <Text style={[styles.label, held && styles.labelHeld]} numberOfLines={1}>
         {held ? 'Release to cancel' : label}
       </Text>
     </Pressable>
@@ -92,8 +103,8 @@ export function HoldToEnd({
 
 const styles = StyleSheet.create({
   pill: {
-    height: 52,
-    borderRadius: 26,
+    height: 54,
+    borderRadius: 27,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: 'transparent',
@@ -102,21 +113,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
+  pillHeld: { borderColor: colors.danger },
+  // Sweeps the full length of the pill (clipped to the rounded shape by overflow).
   fill: {
     position: 'absolute',
     left: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: colors.accentDim,
+    backgroundColor: colors.danger,
   },
   label: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.muted,
   },
-  labelHeld: {
-    color: colors.text,
-  },
+  labelHeld: { color: colors.text },
 });
 
 export default HoldToEnd;

@@ -127,7 +127,10 @@ export default function Settings() {
           When your pace changes, swap at the next song or right away.
         </Text>
 
-        <Pressable style={styles.reset} onPress={() => update(DEFAULT_MATCH_SETTINGS)}>
+        <Pressable
+          onPress={() => update(DEFAULT_MATCH_SETTINGS)}
+          style={({ pressed }) => [styles.reset, pressed && styles.resetPressed]}
+        >
           <Text style={styles.resetText}>Reset to defaults</Text>
         </Pressable>
       </ScrollView>
@@ -186,6 +189,15 @@ const styles = StyleSheet.create({
   segmentText: { color: colors.muted, fontSize: 15, fontWeight: '600' },
   segmentTextActive: { color: colors.onAccent },
   hint: { color: colors.faint, fontSize: 13, marginTop: 10, lineHeight: 18 },
-  reset: { marginTop: 40, alignItems: 'center', paddingVertical: 14 },
-  resetText: { color: colors.danger, fontSize: 16 },
+  reset: {
+    marginTop: 40,
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  resetPressed: { backgroundColor: colors.border, opacity: 0.85 },
+  resetText: { color: colors.danger, fontSize: 16, fontWeight: '600' },
 });
