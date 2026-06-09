@@ -3,16 +3,22 @@ import { CADENCE_WINDOW_MS, CADENCE_MIN_DATA_SEC, CADENCE_TICK_MS } from '@/type
 
 type CadenceCallback = (stepsPerMinute: number) => void;
 
-// Whether the app can actually read steps right now: the device has a pedometer
-// AND motion permission is granted. Drives the no-motion state (see CONTEXT.md) so
-// the active screen never spins forever in "Finding your pace" when motion is off.
+// Whether the app can read steps. Drives the no-motion state (see CONTEXT.md).
+//
+// Deliberately biased toward "yes": on iOS, CMPedometer's authorization is
+// unreliable through getPermissionsAsync (it commonly reports `undetermined` or a
+// misleading `granted: false` even when steps read fine), so we only treat motion
+// as unavailable on a DEFINITE negative — no pedometer hardware, or an explicit
+// `denied`. Anything else (granted, undetermined, or a throwing/flaky API) is
+// treated as usable, so we never wrongly block a working session. An undetermined
+// permission resolves itself: the first step subscription triggers the OS prompt.
 export async function canReadMotion(): Promise<boolean> {
   try {
     if (!(await Pedometer.isAvailableAsync())) return false;
     const perm = await Pedometer.getPermissionsAsync();
-    return perm.granted === true;
+    return perm.status !== 'denied';
   } catch {
-    return false;
+    return true;
   }
 }
 
