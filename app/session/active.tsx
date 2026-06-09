@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Image, ActivityIndicator, AppState } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SessionEngine } from '@/engine/session';
@@ -105,7 +106,9 @@ export default function ActiveSession() {
     action.catch((e) => console.warn('[active] action failed:', e));
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <View style={styles.spacer} />
+
       <View style={styles.statusRow}>
         <View style={[styles.statusDot, (state.inThePocket || state.paceLocked) ? styles.dotLocked : styles.dotCalibrating]} />
         <Text style={styles.statusText}>
@@ -124,14 +127,12 @@ export default function ActiveSession() {
         </Pressable>
       </View>
 
-      <View style={styles.heroRegion}>
-        <CadenceRing value={heroValue} active={inPocket} closeness={state.pocketCloseness} />
-        <View style={styles.messageSlot}>{renderMessage()}</View>
-      </View>
+      <CadenceRing value={heroValue} active={inPocket} closeness={state.pocketCloseness} />
 
-      <View style={styles.bottomRegion}>
-        <View style={styles.songArea}>
-          {state.currentTrack ? (
+      <View style={styles.messageSlot}>{renderMessage()}</View>
+
+      <View style={styles.songArea}>
+        {state.currentTrack ? (
             <View style={styles.trackCard}>
               {state.currentTrack.albumArtUrl ? (
                 <Image source={{ uri: state.currentTrack.albumArtUrl }} style={styles.albumArt} />
@@ -185,35 +186,38 @@ export default function ActiveSession() {
           </Pressable>
         </View>
 
+      <View style={styles.holdWrap}>
         <HoldToEnd onEnd={handleEnd} duration={1000} />
       </View>
+
+      <View style={styles.spacer} />
 
       <ManualPaceModal
         visible={paceModal}
         onClose={() => setPaceModal(false)}
         onConfirm={(spm) => run(engine.setManualPace(spm))}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 28, paddingTop: 60, paddingBottom: 36, alignItems: 'center' },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%' },
+  container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 28, alignItems: 'center' },
+  spacer: { flex: 1 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', marginBottom: 16 },
   statusDot: { width: 10, height: 10, borderRadius: 5 },
   dotLocked: { backgroundColor: colors.accent },
   dotCalibrating: { backgroundColor: colors.muted },
-  statusText: { color: colors.muted, fontSize: 14, flex: 1 },
-  heroRegion: { flex: 1, alignItems: 'center', justifyContent: 'center', width: '100%' },
-  messageSlot: { height: 52, marginTop: 22, alignItems: 'center', justifyContent: 'center' },
+  statusText: { color: colors.muted, fontSize: 14 },
+  messageSlot: { height: 48, marginTop: 16, alignItems: 'center', justifyContent: 'center' },
   msgRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   msgMuted: { color: colors.muted, fontSize: 14, textAlign: 'center', paddingHorizontal: 16 },
   msgAccent: { color: colors.accent, fontSize: 14, textAlign: 'center', paddingHorizontal: 16 },
-  bottomRegion: { width: '100%' },
-  songArea: { minHeight: 92, justifyContent: 'center', marginBottom: 18 },
+  songArea: { minHeight: 80, width: '100%', justifyContent: 'center', marginTop: 26 },
   chip: { backgroundColor: colors.accentSoft, borderRadius: 50, paddingHorizontal: 14, paddingVertical: 6 },
   chipText: { color: colors.accent, fontSize: 13, fontWeight: '700' },
-  pillRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginTop: 28, marginBottom: 8 },
+  pillRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginTop: 22 },
+  holdWrap: { width: '100%', marginTop: 14 },
   pill: { borderWidth: 1.5, borderColor: colors.border, borderRadius: 50, paddingVertical: 11, paddingHorizontal: 20 },
   trackCard: { flexDirection: 'row', alignItems: 'center', gap: 14, width: '100%', marginBottom: 0 },
   albumArt: { width: 56, height: 56, borderRadius: 8 },
