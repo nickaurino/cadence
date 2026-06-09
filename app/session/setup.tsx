@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SymbolView } from 'expo-symbols';
 import { router } from 'expo-router';
 import { Vibe } from '@/types';
 import { colors } from '@/theme/colors';
+import { SettingsButton } from '@/components/SettingsButton';
+import { PressableScale } from '@/components/PressableScale';
 
 const VIBES: { id: Vibe; label: string }[] = [
   { id: 'hype', label: 'Hype' },
@@ -23,9 +24,7 @@ export default function SessionSetup() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <Pressable style={styles.settings} hitSlop={14} onPress={() => router.push('/settings')}>
-        <SymbolView name="gearshape.fill" size={24} type="monochrome" tintColor={colors.faint} />
-      </Pressable>
+      <SettingsButton />
 
       <View style={styles.spacer} />
 
@@ -37,7 +36,7 @@ export default function SessionSetup() {
 
         <View style={styles.vibeGrid}>
           {VIBES.map((v) => (
-            <Pressable
+            <PressableScale
               key={v.id}
               style={[styles.vibeBtn, vibe === v.id && styles.vibeBtnActive]}
               onPress={() => setVibe(v.id)}
@@ -45,13 +44,13 @@ export default function SessionSetup() {
               <Text style={[styles.vibeBtnText, vibe === v.id && styles.vibeBtnTextActive]}>
                 {v.label}
               </Text>
-            </Pressable>
+            </PressableScale>
           ))}
         </View>
 
-        <Pressable style={styles.startBtn} onPress={handleStart}>
+        <PressableScale style={styles.startBtn} onPress={handleStart}>
           <Text style={styles.startBtnText}>Let&apos;s go</Text>
-        </Pressable>
+        </PressableScale>
       </View>
 
       <View style={styles.spacer} />
@@ -61,7 +60,6 @@ export default function SessionSetup() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 32 },
-  settings: { position: 'absolute', top: 64, right: 28, padding: 8, zIndex: 1 },
   spacer: { flex: 1 },
   content: { alignItems: 'center' },
   heading: { fontSize: 28, fontWeight: '800', color: colors.text, textAlign: 'center' },

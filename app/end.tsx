@@ -1,8 +1,9 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SessionSummary } from '@/types';
 import { colors } from '@/theme/colors';
+import { PressableScale } from '@/components/PressableScale';
 
 function parseSummary(raw?: string): SessionSummary | null {
   if (!raw) return null;
@@ -50,9 +51,9 @@ export default function EndSession() {
           <Text style={styles.body}>Session complete. Keep it up!</Text>
         )}
 
-        <Pressable style={styles.doneBtn} onPress={() => router.replace('/home')}>
+        <PressableScale style={styles.doneBtn} onPress={() => router.replace('/home')}>
           <Text style={styles.doneBtnText}>Done</Text>
-        </Pressable>
+        </PressableScale>
       </View>
     </SafeAreaView>
   );
