@@ -69,8 +69,12 @@ export function ManualPaceModal({ visible, onClose, onConfirm }: Props) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={() => {}}>
+      <View style={styles.backdrop}>
+        {/* Catches taps outside the sheet to close. It sits behind the sheet,
+            so it never intercepts the wheel's scroll gesture (a Pressable
+            wrapping the ScrollView would steal the drag). */}
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <View style={styles.sheet}>
           <Text style={styles.title}>Set your pace</Text>
           <Text style={styles.sub}>Scroll to your steps per minute.</Text>
 
@@ -110,8 +114,8 @@ export function ManualPaceModal({ visible, onClose, onConfirm }: Props) {
           <Pressable style={styles.cancel} onPress={onClose}>
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
