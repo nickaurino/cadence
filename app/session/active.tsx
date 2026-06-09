@@ -71,11 +71,32 @@ export default function ActiveSession() {
   }
 
   const engine = engineRef.current;
-
+  const s = state;
   const inPocket = state.inThePocket;
   const heroValue = inPocket
     ? state.managedCadence
     : state.perceivedCadence > 0 ? state.perceivedCadence : '··';
+
+  // One message for the reserved slot, chosen by priority, so nothing reflows the ring.
+  function renderMessage() {
+    if (s.notice) return <Text style={styles.msgAccent}>{s.notice}</Text>;
+    if (s.isLoadingTracks)
+      return (
+        <View style={styles.msgRow}>
+          <ActivityIndicator color={colors.accent} />
+          <Text style={styles.msgAccent}>Finding songs for your pace…</Text>
+        </View>
+      );
+    if (s.isCalibrating)
+      return <Text style={styles.msgMuted}>Start moving — we&apos;ll match music to your rhythm.</Text>;
+    if (!inPocket && s.managedCadence > 0)
+      return (
+        <View style={styles.chip}>
+          <Text style={styles.chipText}>Matching {s.managedCadence}</Text>
+        </View>
+      );
+    return null; // in the pocket: calm, no message
+  }
 
   return (
     <View style={styles.container}>
@@ -97,86 +118,69 @@ export default function ActiveSession() {
         </Pressable>
       </View>
 
-      {state.notice && <Text style={styles.notice}>{state.notice}</Text>}
-
-      <CadenceRing value={heroValue} active={inPocket} />
-      {state.managedCadence > 0 && !inPocket && (
-        <View style={styles.chip}>
-          <Text style={styles.chipText}>Matching {state.managedCadence}</Text>
-        </View>
-      )}
-
-      {state.isCalibrating && (
-        <View style={styles.calibrating}>
-          <ActivityIndicator color={colors.muted} />
-          <Text style={styles.calibratingText}>
-            Start moving and we&apos;ll match music to your rhythm.
-          </Text>
-        </View>
-      )}
-
-      {state.isLoadingTracks && (
-        <View style={styles.calibrating}>
-          <ActivityIndicator color={colors.accent} />
-          <Text style={styles.loadingText}>Finding songs for your pace…</Text>
-        </View>
-      )}
-
-      {!state.isCalibrating && !state.isLoadingTracks && !state.currentTrack && (
-        <Text style={styles.noMusicLabel}>No songs matched your pace yet.</Text>
-      )}
-
-      {state.currentTrack && (
-        <View style={styles.trackCard}>
-          {state.currentTrack.albumArtUrl ? (
-            <Image source={{ uri: state.currentTrack.albumArtUrl }} style={styles.albumArt} />
-          ) : null}
-          <View style={styles.trackInfo}>
-            <Text style={styles.trackName} numberOfLines={1}>{state.currentTrack.name}</Text>
-            <Text style={styles.trackArtist} numberOfLines={1}>{state.currentTrack.artist}</Text>
-            <Text style={styles.trackBpm}>
-              {Math.round(state.currentTrack.tempo)} BPM
-              {state.currentTrack.matchMultiple === 2
-                ? ' (×2)'
-                : state.currentTrack.matchMultiple === 0.5
-                  ? ' (½×)'
-                  : ''}
-            </Text>
-          </View>
-          <View style={styles.inlineControls}>
-            <Pressable hitSlop={12} onPress={() => engine.skipPrevious()}>
-              <SymbolView name="backward.end.fill" size={20} type="monochrome" tintColor={colors.text} />
-            </Pressable>
-            <Pressable hitSlop={12} onPress={() => engine.togglePlayPause()}>
-              <SymbolView
-                name={state.isPlaying ? 'pause.fill' : 'play.fill'}
-                size={22}
-                type="monochrome"
-                tintColor={colors.text}
-              />
-            </Pressable>
-            <Pressable hitSlop={12} onPress={() => engine.skipNext()}>
-              <SymbolView name="forward.end.fill" size={20} type="monochrome" tintColor={colors.text} />
-            </Pressable>
-          </View>
-        </View>
-      )}
-
-      {!musicAvailable && (
-        <Text style={styles.noMusicLabel}>Enable Apple Music for playback control</Text>
-      )}
-
-      <View style={styles.pillRow}>
-        <Pressable style={styles.pill} onPress={() => setPaceModal(true)}>
-          <Text style={styles.secondaryBtnText}>Set pace</Text>
-        </Pressable>
-
-        <Pressable style={styles.pill} onPress={() => engine.recalibrate()}>
-          <Text style={styles.secondaryBtnText}>↺  Recalibrate</Text>
-        </Pressable>
+      <View style={styles.heroRegion}>
+        <CadenceRing value={heroValue} active={inPocket} closeness={state.pocketCloseness} />
+        <View style={styles.messageSlot}>{renderMessage()}</View>
       </View>
 
-      <HoldToEnd onEnd={handleEnd} />
+      <View style={styles.bottomRegion}>
+        <View style={styles.songArea}>
+          {state.currentTrack ? (
+            <View style={styles.trackCard}>
+              {state.currentTrack.albumArtUrl ? (
+                <Image source={{ uri: state.currentTrack.albumArtUrl }} style={styles.albumArt} />
+              ) : null}
+              <View style={styles.trackInfo}>
+                <Text style={styles.trackName} numberOfLines={1}>{state.currentTrack.name}</Text>
+                <Text style={styles.trackArtist} numberOfLines={1}>{state.currentTrack.artist}</Text>
+                <Text style={styles.trackBpm}>
+                  {Math.round(state.currentTrack.tempo)} BPM
+                  {state.currentTrack.matchMultiple === 2
+                    ? ' (×2)'
+                    : state.currentTrack.matchMultiple === 0.5
+                      ? ' (½×)'
+                      : ''}
+                </Text>
+              </View>
+              <View style={styles.inlineControls}>
+                <Pressable hitSlop={12} onPress={() => engine.skipPrevious()}>
+                  <SymbolView name="backward.end.fill" size={20} type="monochrome" tintColor={colors.text} />
+                </Pressable>
+                <Pressable hitSlop={12} onPress={() => engine.togglePlayPause()}>
+                  <SymbolView
+                    name={state.isPlaying ? 'pause.fill' : 'play.fill'}
+                    size={22}
+                    type="monochrome"
+                    tintColor={colors.text}
+                  />
+                </Pressable>
+                <Pressable hitSlop={12} onPress={() => engine.skipNext()}>
+                  <SymbolView name="forward.end.fill" size={20} type="monochrome" tintColor={colors.text} />
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            !state.isCalibrating && !state.isLoadingTracks ? (
+              <Text style={styles.noMusicLabel}>No songs matched your pace yet.</Text>
+            ) : null
+          )}
+        </View>
+
+        {!musicAvailable && (
+          <Text style={styles.noMusicLabel}>Enable Apple Music for playback control</Text>
+        )}
+
+        <View style={styles.pillRow}>
+          <Pressable style={styles.pill} onPress={() => setPaceModal(true)}>
+            <Text style={styles.secondaryBtnText}>Set pace</Text>
+          </Pressable>
+          <Pressable style={styles.pill} onPress={() => engine.recalibrate()}>
+            <Text style={styles.secondaryBtnText}>↺  Recalibrate</Text>
+          </Pressable>
+        </View>
+
+        <HoldToEnd onEnd={handleEnd} duration={1000} />
+      </View>
 
       <ManualPaceModal
         visible={paceModal}
@@ -188,21 +192,24 @@ export default function ActiveSession() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: 32, alignItems: 'center', justifyContent: 'center' },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 40 },
+  container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 28, paddingTop: 60, paddingBottom: 36, alignItems: 'center' },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%' },
   statusDot: { width: 10, height: 10, borderRadius: 5 },
   dotLocked: { backgroundColor: colors.accent },
   dotCalibrating: { backgroundColor: colors.muted },
-  statusText: { color: colors.muted, fontSize: 14 },
-  notice: { color: colors.muted, fontSize: 13, textAlign: 'center', marginBottom: 16, paddingHorizontal: 16 },
-  chip: { backgroundColor: colors.accentSoft, borderRadius: 50, paddingHorizontal: 14, paddingVertical: 6, marginTop: 18 },
+  statusText: { color: colors.muted, fontSize: 14, flex: 1 },
+  heroRegion: { flex: 1, alignItems: 'center', justifyContent: 'center', width: '100%' },
+  messageSlot: { height: 52, marginTop: 22, alignItems: 'center', justifyContent: 'center' },
+  msgRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  msgMuted: { color: colors.muted, fontSize: 14, textAlign: 'center', paddingHorizontal: 16 },
+  msgAccent: { color: colors.accent, fontSize: 14, textAlign: 'center', paddingHorizontal: 16 },
+  bottomRegion: { width: '100%' },
+  songArea: { minHeight: 92, justifyContent: 'center', marginBottom: 18 },
+  chip: { backgroundColor: colors.accentSoft, borderRadius: 50, paddingHorizontal: 14, paddingVertical: 6 },
   chipText: { color: colors.accent, fontSize: 13, fontWeight: '700' },
   pillRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginTop: 28, marginBottom: 8 },
   pill: { borderWidth: 1.5, borderColor: colors.border, borderRadius: 50, paddingVertical: 11, paddingHorizontal: 20 },
-  calibrating: { alignItems: 'center', gap: 12, marginBottom: 32 },
-  calibratingText: { color: colors.muted, fontSize: 15, textAlign: 'center', paddingHorizontal: 24 },
-  loadingText: { color: colors.accent, fontSize: 15, textAlign: 'center' },
-  trackCard: { flexDirection: 'row', alignItems: 'center', gap: 14, width: '100%', marginBottom: 40 },
+  trackCard: { flexDirection: 'row', alignItems: 'center', gap: 14, width: '100%', marginBottom: 0 },
   albumArt: { width: 56, height: 56, borderRadius: 8 },
   trackInfo: { flex: 1 },
   trackName: { color: colors.text, fontSize: 16, fontWeight: '600' },
@@ -210,7 +217,6 @@ const styles = StyleSheet.create({
   trackBpm: { color: colors.accent, fontSize: 12, marginTop: 4 },
   inlineControls: { flexDirection: 'row', alignItems: 'center', gap: 18 },
   noMusicLabel: { color: colors.disabled, fontSize: 13, marginBottom: 16 },
-  secondaryBtn: { borderWidth: 1.5, borderColor: colors.border, borderRadius: 50, paddingVertical: 12, paddingHorizontal: 28, marginBottom: 14 },
   secondaryBtnText: { color: colors.muted, fontSize: 16 },
   endBtn: { paddingVertical: 12, paddingHorizontal: 28 },
   endBtnText: { color: colors.disabled, fontSize: 16 },
