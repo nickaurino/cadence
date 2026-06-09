@@ -42,12 +42,11 @@ tied to implementation. Keep entries behavioral.
 
 - **Permission primer** — a why-first screen shown *before* a system permission
   prompt, explaining the value so the native dialog converts better. Cadence has
-  two: **motion** (CMPedometer — "reads your steps to match music to your pace;
-  never tracks location") and **Apple Music** (MusicKit — playback). Motion is
-  asked first; Apple Music second. Both have a fallback rather than a dead end:
-  Apple Music → "continue without" (pace detection only); motion → "set my pace
-  manually" (manual pace works without the pedometer). Denial shows a recoverable
-  explainer with a deep-link to iOS Settings plus the fallback path.
+  one: **Apple Music** (MusicKit — playback), with a "continue without" fallback
+  (pace detection still works). **Motion** has no onboarding primer: the OS
+  Motion prompt fires on the first session (lazily, when step reading starts), and
+  the in-app **no-motion state** handles denial contextually. (One motion screen,
+  shown only when relevant, rather than a primer plus a recovery screen.)
 
 - **No-motion state** — the active-screen state when the pedometer is unavailable
   (motion denied, revoked, or unsupported). Matching can't auto-follow, so instead

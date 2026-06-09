@@ -30,13 +30,17 @@ Prep research (`docs/design-research/06-onboarding-psychology.md`,
 ## Decision
 
 1. **Onboarding ends at the first match, not on home.** Flow: two framing screens
-   (honest ~10% perceived-effort payoff → entrainment mechanism) → motion primer →
-   Apple Music primer (with a gentle subscription disclaimer + "continue without"
-   fallback) → straight into a first guided session. Neither permission is a hard
-   dead-end: Apple Music denial → pace-detection-only; motion denial → manual pace
-   (which runs without the pedometer). When motion is unavailable for any reason
-   the active screen shows a recoverable **no-motion state** (enable in Settings,
-   or set your own pace) instead of spinning in "Finding your pace."
+   (honest ~10% perceived-effort payoff → entrainment mechanism) → Apple Music
+   primer (with a gentle subscription disclaimer + "continue without" fallback) →
+   straight into a first guided session. **Motion has no onboarding primer**
+   (revised 2026-06-09): it was redundant with the in-app no-motion state and read
+   as a near-duplicate screen. The OS Motion prompt fires lazily on the first
+   session; if denied (or unavailable), the active screen shows the recoverable
+   **no-motion state** (enable in Settings, or set your own pace via manual pace,
+   which runs without the pedometer) instead of spinning in "Finding your pace."
+   The no-motion gate only triggers on a definite negative (no hardware or explicit
+   `denied`) — iOS pedometer authorization reads unreliably, so granted/
+   undetermined never wrongly block a session.
 
 2. **The feature tour is four independent, one-time contextual coachmarks**, each
    gated on `(its own trigger) AND (not yet seen)` and persisted individually,

@@ -8,7 +8,7 @@ export default function OnboardingTwo() {
     <View style={styles.container}>
       <Text style={styles.title}>{FRAMING.mechanism.title}</Text>
       <Text style={styles.body}>{FRAMING.mechanism.body}</Text>
-      <Pressable style={styles.button} onPress={() => router.push('/onboarding/motion')}>
+      <Pressable style={styles.button} onPress={() => router.push('/onboarding/connect?from=onboarding')}>
         <Text style={styles.buttonText}>{FRAMING.mechanism.cta} →</Text>
       </Pressable>
     </View>

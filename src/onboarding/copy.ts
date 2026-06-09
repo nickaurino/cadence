@@ -14,15 +14,10 @@ export const FRAMING = {
   },
 } as const;
 
-// Permission primers (why-first, shown before each native prompt).
+// Permission primers (why-first, shown before the native prompt). Motion has no
+// onboarding primer: the OS prompt fires on the first session, and the in-app
+// no-motion state (NoMotionState) handles denial contextually.
 export const PRIMERS = {
-  motion: {
-    title: 'Cadence reads your steps.',
-    body: 'It measures your steps per minute to match music to your pace. It never tracks your location.',
-    cta: 'Allow motion access',
-    skip: 'Not now',
-    deniedNote: 'Without Motion access, Cadence can’t match music to your pace on its own. You can turn it on in Settings now, or continue and do it later.',
-  },
   appleMusic: {
     title: 'Connect Apple Music.',
     body: 'Cadence finds songs in your library whose tempo matches your stride.',

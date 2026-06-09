@@ -80,6 +80,16 @@ export default function ActiveSession() {
     };
   }, []);
 
+  // While calibrating with motion still presumed OK, re-check periodically: a
+  // brand-new user can deny the OS motion prompt mid-session (it fired lazily on
+  // the first step subscription), and we want the no-motion state to catch that
+  // instead of spinning forever in "Finding your pace".
+  useEffect(() => {
+    if (!state?.isCalibrating || motionOk === false) return;
+    const id = setInterval(() => canReadMotion().then(setMotionOk), 3000);
+    return () => clearInterval(id);
+  }, [state?.isCalibrating, motionOk]);
+
   // Poll playback position while a track is loaded so the progress bar advances.
   const trackId = state?.currentTrack?.id;
   useEffect(() => {
