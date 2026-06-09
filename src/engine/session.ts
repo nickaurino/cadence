@@ -28,6 +28,7 @@ import {
 const METERS_PER_STEP = 0.78;
 const METERS_PER_MILE = 1609.34;
 import { getMatchSettings } from '@/storage/store';
+import { PersistedSession, savePersisted, clearPersisted } from '@/storage/session-store';
 
 interface StartOptions {
   vibe: Vibe;
@@ -59,6 +60,7 @@ export class SessionEngine {
   private _cadenceSum = 0;
   private _cadenceCount = 0;
   private _playedIds = new Set<string>();
+  private _lastPersist = 0;
 
   onStateChange(cb: StateChangeCallback): void {
     this._onStateChange = cb;
@@ -66,6 +68,36 @@ export class SessionEngine {
 
   private _emit(): void {
     if (this._state && this._onStateChange) this._onStateChange({ ...this._state });
+    this._persist();
+  }
+
+  // Snapshot the durable session state for resume. Null when no session is live.
+  serialize(): PersistedSession | null {
+    if (!this._state) return null;
+    return {
+      version: 1,
+      vibe: this._state.vibe,
+      startedAt: this._state.startedAt,
+      tracks: this._tracks,
+      index: this._index,
+      page: this._page,
+      settings: this._settings,
+      paceLocked: this._paceLocked,
+      cadenceSum: this._cadenceSum,
+      cadenceCount: this._cadenceCount,
+      playedIds: [...this._playedIds],
+    };
+  }
+
+  // Throttled fire-and-forget write. Durable fields change seldom, so a 3s
+  // window keeps disk writes rare. Never throws into the engine.
+  private _persist(force = false): void {
+    if (!this._state) return;
+    const snapshot = this.serialize();
+    if (!snapshot) return;
+    if (!force && Date.now() - this._lastPersist < 3000) return;
+    this._lastPersist = Date.now();
+    savePersisted(snapshot).catch(() => {});
   }
 
   private _syncTracks(): void {
@@ -100,6 +132,57 @@ export class SessionEngine {
     this._trackSub = addTrackChangeListener(({ trackId }) => this._onNativeTrackChange(trackId));
 
     // Don't play anything yet — wait until we read the user's actual pace.
+    this._detector.start((spm) => {
+      this._onPerceivedCadence(spm).catch((e) => {
+        console.error('[SessionEngine] cadence handler error:', e);
+      });
+    });
+  }
+
+  // Rehydrate from a saved snapshot instead of start(). The music is already
+  // playing on the system player, so we re-attach to it rather than refetch or
+  // replay the queue.
+  async resumeFrom(snapshot: PersistedSession): Promise<void> {
+    this._settings = snapshot.settings;
+    this._tracks = snapshot.tracks;
+    this._index = snapshot.index;
+    this._page = snapshot.page;
+    this._paceLocked = snapshot.paceLocked;
+    this._cadenceSum = snapshot.cadenceSum;
+    this._cadenceCount = snapshot.cadenceCount;
+    this._playedIds = new Set(snapshot.playedIds);
+
+    this._smoothedPerceived = null;
+    this._managedSince = null;
+    this._pendingTracks = null;
+    this._committing = false;
+    this._replenishing = false;
+
+    // managedCadence isn't stored; seed it from the session average as a target.
+    // Live cadence re-adjusts it via the normal drift logic.
+    const managed =
+      snapshot.cadenceCount > 0 ? Math.round(snapshot.cadenceSum / snapshot.cadenceCount) : 0;
+
+    this._state = {
+      vibe: snapshot.vibe,
+      perceivedCadence: 0,
+      managedCadence: managed,
+      isCalibrating: false,
+      isLoadingTracks: false,
+      paceLocked: snapshot.paceLocked,
+      isPlaying: true,
+      notice: null,
+      currentTrack: null,
+      queue: [],
+      startedAt: snapshot.startedAt,
+    };
+
+    this._syncTracks();
+    // Re-attaching makes the native side emit the currently-playing track,
+    // which realigns _index if the player advanced while we were away.
+    this._trackSub = addTrackChangeListener(({ trackId }) => this._onNativeTrackChange(trackId));
+    this._emit();
+
     this._detector.start((spm) => {
       this._onPerceivedCadence(spm).catch((e) => {
         console.error('[SessionEngine] cadence handler error:', e);
@@ -383,6 +466,7 @@ export class SessionEngine {
   }
 
   async stop(): Promise<void> {
+    clearPersisted().catch(() => {});
     this._detector.stop();
     this._trackSub?.remove();
     this._trackSub = null;
