@@ -40,13 +40,17 @@ tied to implementation. Keep entries behavioral.
   then a handoff straight into the first session. Ends at the first match, not on
   a cold home screen. Gated by `hasCompletedOnboarding()` / `markOnboardingComplete()`.
 
-- **Permission primer** — a why-first screen shown *before* a system permission
-  prompt, explaining the value so the native dialog converts better. Cadence has
-  one: **Apple Music** (MusicKit — playback), with a "continue without" fallback
-  (pace detection still works). **Motion** has no onboarding primer: the OS
-  Motion prompt fires on the first session (lazily, when step reading starts), and
-  the in-app **no-motion state** handles denial contextually. (One motion screen,
-  shown only when relevant, rather than a primer plus a recovery screen.)
+- **Permission primer** — a screen shown in onboarding to set up a permission.
+  - **Apple Music** (MusicKit — playback): a real why-first primer with a
+    Connect button and a "continue without" fallback (pace detection still works).
+    Always shown (no auto-skip — MusicKit's authorization status lags the iOS
+    toggle, so auto-skipping wrongly hid it); an already-authorized user just taps
+    Connect and it resolves instantly.
+  - **Motion** (CMPedometer): an *informational heads-up* only, no Allow button.
+    iOS won't reliably let an app re-prompt once motion is decided
+    (`canAskAgain:false`) and its status API misreports, so the slide just sets
+    expectations ("we'll ask when you start"). The OS prompt fires when the first
+    session reads steps; denial is handled by the in-app **no-motion state**.
 
 - **No-motion state** — the active-screen state when the pedometer is unavailable
   (motion denied, revoked, or unsupported). Matching can't auto-follow, so instead
@@ -54,6 +58,11 @@ tied to implementation. Keep entries behavioral.
   message with two paths: enable Motion in iOS Settings, or set your own pace
   (manual pace / pace lock, which runs without the pedometer). The music-at-your-
   tempo core still works in manual mode; only the "on the beat" feedback is absent.
+  - **Detection:** readability is probed via `getStepCountAsync` (resolves when
+    motion is readable, throws when truly denied), NOT `getPermissionsAsync` —
+    the latter misreports `denied` even when Motion & Fitness is enabled. Once the
+    user picks a manual pace, the screen won't re-trap them (recalibrate, which
+    clears the lock, is hidden when motion is unavailable).
 
 - **First match** — the aha moment onboarding aims for: the first time the music
   tempo visibly locks to the user's live cadence (first time "on the beat" / in

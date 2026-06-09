@@ -30,17 +30,23 @@ Prep research (`docs/design-research/06-onboarding-psychology.md`,
 ## Decision
 
 1. **Onboarding ends at the first match, not on home.** Flow: two framing screens
-   (honest ~10% perceived-effort payoff → entrainment mechanism) → Apple Music
-   primer (with a gentle subscription disclaimer + "continue without" fallback) →
-   straight into a first guided session. **Motion has no onboarding primer**
-   (revised 2026-06-09): it was redundant with the in-app no-motion state and read
-   as a near-duplicate screen. The OS Motion prompt fires lazily on the first
-   session; if denied (or unavailable), the active screen shows the recoverable
-   **no-motion state** (enable in Settings, or set your own pace via manual pace,
-   which runs without the pedometer) instead of spinning in "Finding your pace."
-   The no-motion gate only triggers on a definite negative (no hardware or explicit
-   `denied`) — iOS pedometer authorization reads unreliably, so granted/
-   undetermined never wrongly block a session.
+   (honest ~10% perceived-effort payoff → entrainment mechanism) → **motion
+   heads-up** (informational, no Allow button) → **Apple Music primer** (gentle
+   subscription disclaimer + "continue without" fallback, always shown) → straight
+   into a first guided session.
+   - **Motion** gets an informational heads-up, not an Allow button: iOS won't
+     reliably let an app re-prompt once motion is decided (`canAskAgain:false`),
+     so the slide sets expectations and the OS prompt fires when the first session
+     reads steps. Denial is handled by the in-app **no-motion state**.
+   - **Motion readability** is probed via `getStepCountAsync` (resolves =
+     readable, throws = denied), NOT `getPermissionsAsync`, which misreports
+     `denied` even when Motion & Fitness is enabled in Settings (confirmed on
+     device — it was blocking working sessions). The probe matches what
+     `seedFromHistory` already relies on.
+   - **Both onboarding permission screens always render** (no auto-skip on a
+     cached status): MusicKit's `isAuthorized` and the motion status API both lag
+     the iOS toggle, so auto-skip wrongly hid the screens. Already-granted users
+     just tap through.
 
 2. **The feature tour is four independent, one-time contextual coachmarks**, each
    gated on `(its own trigger) AND (not yet seen)` and persisted individually,
