@@ -6,15 +6,22 @@ import { colors } from '@/theme/colors';
 interface CadenceRingProps {
   value: number | string; // the hero number to show (already chosen by the parent)
   unit?: string; // e.g. "steps / min"; default "steps / min"
-  active: boolean; // true = in the pocket (gold, pulsing); false = shifting/finding (calm)
+  active: boolean; // true = in the pocket — drives the pulse
+  closeness?: number; // 0..1 warmth; default: active ? 1 : 0
 }
 
 const RING_SIZE = 220;
 const PULSE_DURATION = 1200; // half a ~2.4s cycle
+const WARM_DURATION = 320;
 
-export function CadenceRing({ value, unit = 'steps / min', active }: CadenceRingProps) {
-  // Drives the gentle in-the-pocket pulse (scale + glow). Native-driver safe.
+export function CadenceRing({ value, unit = 'steps / min', active, closeness }: CadenceRingProps) {
+  const targetCloseness = closeness ?? (active ? 1 : 0);
+
+  // Drives the gentle in-the-pocket pulse (scale). Native-driver only.
   const pulse = useRef(new Animated.Value(0)).current;
+  // Drives the cold->gold warmth (colors + glow). Color/shadow interpolation
+  // requires useNativeDriver: false, so this stays a separate value.
+  const warm = useRef(new Animated.Value(targetCloseness)).current;
 
   useEffect(() => {
     if (!active) {
@@ -46,13 +53,29 @@ export function CadenceRing({ value, unit = 'steps / min', active }: CadenceRing
     return () => loop.stop();
   }, [active, pulse]);
 
+  useEffect(() => {
+    Animated.timing(warm, {
+      toValue: targetCloseness,
+      duration: WARM_DURATION,
+      useNativeDriver: false,
+    }).start();
+  }, [targetCloseness, warm]);
+
   const scale = pulse.interpolate({
     inputRange: [0, 1],
     outputRange: [1, 1.025],
   });
-  const glowOpacity = pulse.interpolate({
+  const borderColor = warm.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.35, 0.7],
+    outputRange: [colors.border, colors.accent],
+  });
+  const shadowOpacity = warm.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.7],
+  });
+  const numberColor = warm.interpolate({
+    inputRange: [0, 1],
+    outputRange: [colors.text, colors.accent],
   });
 
   return (
@@ -60,16 +83,18 @@ export function CadenceRing({ value, unit = 'steps / min', active }: CadenceRing
       style={[
         styles.ring,
         {
-          borderColor: active ? colors.accent : colors.border,
+          borderColor,
+          shadowColor: colors.accent,
+          shadowRadius: 18,
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity,
           transform: [{ scale }],
         },
-        active && styles.glow,
-        active && { shadowOpacity: glowOpacity },
       ]}
     >
       <View style={styles.disc}>
         <Animated.Text
-          style={[styles.value, { color: active ? colors.accent : colors.text }]}
+          style={[styles.value, { color: numberColor }]}
           numberOfLines={1}
           adjustsFontSizeToFit
         >
@@ -91,11 +116,6 @@ const styles = StyleSheet.create({
     borderWidth: 12,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  glow: {
-    shadowColor: colors.accent,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 0 },
   },
   disc: {
     flex: 1,
