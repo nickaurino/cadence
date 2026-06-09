@@ -15,8 +15,19 @@ type CadenceCallback = (stepsPerMinute: number) => void;
 export async function canReadMotion(): Promise<boolean> {
   try {
     if (!(await Pedometer.isAvailableAsync())) return false;
-    const perm = await Pedometer.getPermissionsAsync();
-    return perm.status !== 'denied';
+    // Probe ACTUAL readability. getPermissionsAsync is unreliable for CMPedometer
+    // (it returns status:'denied' even when Motion & Fitness is enabled in
+    // Settings). getStepCountAsync exercises the real permission: it resolves when
+    // motion is readable and throws when genuinely denied (same signal
+    // seedFromHistory already relies on).
+    const end = new Date();
+    const start = new Date(end.getTime() - 1000);
+    try {
+      await Pedometer.getStepCountAsync(start, end);
+      return true;
+    } catch {
+      return false;
+    }
   } catch {
     return true;
   }

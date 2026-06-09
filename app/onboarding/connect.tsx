@@ -1,34 +1,29 @@
 // app/onboarding/connect.tsx — Apple Music permission primer.
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { authorize, isAuthorized } from '@/music/auth';
+import { authorize } from '@/music/auth';
 import { colors } from '@/theme/colors';
 import { PRIMERS } from '@/onboarding/copy';
 
 export default function ConnectAppleMusic() {
   const { from } = useLocalSearchParams<{ from?: string }>();
-  const [checking, setChecking] = useState(from === 'onboarding');
   const [loading, setLoading] = useState(false);
   const [denied, setDenied] = useState(false);
 
   // Onboarding flows straight into the first session (momentum to the aha);
   // re-auth from the app root just returns home. markOnboardingComplete fires at
   // session start, not here.
+  //
+  // The primer is ALWAYS shown (no auto-skip on isAuthorized): MusicKit's
+  // authorization status lags the Settings toggle, so auto-skipping wrongly hid
+  // this screen. Already-authorized users just tap Connect and authorize()
+  // resolves instantly; not-authorized users get the real prompt.
   function proceed() {
     if (from === 'onboarding') router.replace('/session/setup');
     else router.replace('/home');
   }
-
-  // In the onboarding flow, skip straight through if Apple Music is already
-  // authorized (e.g. after Reset app) instead of asking to connect again.
-  useEffect(() => {
-    if (from !== 'onboarding') return;
-    isAuthorized()
-      .then((ok) => (ok ? proceed() : setChecking(false)))
-      .catch(() => setChecking(false));
-  }, []);
 
   async function handleConnect() {
     setLoading(true);
@@ -42,8 +37,6 @@ export default function ConnectAppleMusic() {
       setLoading(false);
     }
   }
-
-  if (checking) return <View style={styles.container} />;
 
   return (
     <View style={styles.container}>
