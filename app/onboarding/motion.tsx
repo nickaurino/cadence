@@ -1,15 +1,22 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { colors } from '@/theme/colors';
-import { FRAMING } from '@/onboarding/copy';
+import { PRIMERS } from '@/onboarding/copy';
 
-export default function OnboardingTwo() {
+// Motion heads-up (informational). No Allow button: iOS won't reliably honor a
+// re-prompt once motion is decided, so this just sets expectations. The OS prompt
+// fires when the first session starts reading steps; if motion is off, the in-app
+// no-motion state handles it.
+export default function MotionHeadsUp() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{FRAMING.mechanism.title}</Text>
-      <Text style={styles.body}>{FRAMING.mechanism.body}</Text>
-      <Pressable style={styles.button} onPress={() => router.push('/onboarding/motion')}>
-        <Text style={styles.buttonText}>{FRAMING.mechanism.cta} →</Text>
+      <Text style={styles.title}>{PRIMERS.motion.title}</Text>
+      <Text style={styles.body}>{PRIMERS.motion.body}</Text>
+      <Pressable
+        style={styles.button}
+        onPress={() => router.push('/onboarding/connect?from=onboarding')}
+      >
+        <Text style={styles.buttonText}>{PRIMERS.motion.cta}</Text>
       </Pressable>
     </View>
   );

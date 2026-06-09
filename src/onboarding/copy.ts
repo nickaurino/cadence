@@ -14,10 +14,18 @@ export const FRAMING = {
   },
 } as const;
 
-// Permission primers (why-first, shown before the native prompt). Motion has no
-// onboarding primer: the OS prompt fires on the first session, and the in-app
-// no-motion state (NoMotionState) handles denial contextually.
+// Permission primers shown in onboarding.
+//
+// Motion is an *informational heads-up*, not an Allow button: iOS won't reliably
+// let us re-prompt once motion is decided (canAskAgain:false) and the status API
+// misreports, so we set expectations and let the OS prompt fire when the first
+// session starts (denial is then handled by the in-app no-motion state).
 export const PRIMERS = {
+  motion: {
+    title: 'Cadence reads your steps.',
+    body: "It measures your steps per minute to match music to your pace. It never tracks your location. We'll ask for Motion access right when you start your first session.",
+    cta: 'Sounds good',
+  },
   appleMusic: {
     title: 'Connect Apple Music.',
     body: 'Cadence finds songs in your library whose tempo matches your stride.',
