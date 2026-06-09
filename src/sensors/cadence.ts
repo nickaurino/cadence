@@ -78,6 +78,21 @@ export class CadenceDetector {
     this._buffer = [];
   }
 
+  // Emit one immediate cadence estimate from recent pedometer history so resume
+  // doesn't show a calibrating gap. Does not touch the live buffer; the normal
+  // watchStepCount ticks take over within the window.
+  async seedFromHistory(windowMs: number = CADENCE_WINDOW_MS): Promise<void> {
+    const end = new Date();
+    const start = new Date(end.getTime() - windowMs);
+    try {
+      const { steps } = await Pedometer.getStepCountAsync(start, end);
+      const spm = Math.round((steps / (windowMs / 1000)) * 60);
+      if (spm > 0 && this._onCadence) this._onCadence(spm);
+    } catch {
+      // History unavailable on this device/permission — fine, live ticks fill in.
+    }
+  }
+
   stop(): void {
     this._subscription?.remove();
     this._subscription = null;

@@ -1,0 +1,108 @@
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  setItem: jest.fn().mockResolvedValue(undefined),
+  getItem: jest.fn().mockResolvedValue(null),
+  removeItem: jest.fn().mockResolvedValue(undefined),
+}));
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  savePersisted,
+  loadPersisted,
+  clearPersisted,
+  shouldResume,
+  RESUME_MAX_AGE_MS,
+  type PersistedSession,
+} from '@/storage/session-store';
+
+const KEY = 'session:active';
+
+function makeSession(overrides: Partial<PersistedSession> = {}): PersistedSession {
+  return {
+    version: 1,
+    vibe: 'hype',
+    startedAt: 1000,
+    tracks: [
+      { id: 't1', name: 'Song', artist: 'Artist', albumArtUrl: '', tempo: 180 },
+    ],
+    index: 0,
+    page: 0,
+    settings: {
+      exact: true,
+      halfTime: true,
+      doubleTime: true,
+      tolerance: 0.06,
+      sensitivity: 'balanced',
+      songSwitching: 'boundary',
+    },
+    paceLocked: false,
+    managedCadence: 0,
+    cadenceSum: 0,
+    cadenceCount: 0,
+    playedIds: [],
+    ...overrides,
+  };
+}
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
+describe('savePersisted', () => {
+  it('writes the JSON string under the active session key', async () => {
+    const session = makeSession();
+    await savePersisted(session);
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(KEY, JSON.stringify(session));
+  });
+});
+
+describe('loadPersisted', () => {
+  it('returns the parsed object for a valid stored value', async () => {
+    const session = makeSession();
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(JSON.stringify(session));
+    await expect(loadPersisted()).resolves.toEqual(session);
+  });
+
+  it('returns null when nothing is stored', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(null);
+    await expect(loadPersisted()).resolves.toBeNull();
+  });
+
+  it('returns null on corrupt JSON', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce('not json{');
+    await expect(loadPersisted()).resolves.toBeNull();
+  });
+
+  it('returns null on a version mismatch', async () => {
+    const stale = JSON.stringify({ ...makeSession(), version: 0 });
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(stale);
+    await expect(loadPersisted()).resolves.toBeNull();
+  });
+});
+
+describe('clearPersisted', () => {
+  it('removes the active session key', async () => {
+    await clearPersisted();
+    expect(AsyncStorage.removeItem).toHaveBeenCalledWith(KEY);
+  });
+});
+
+describe('shouldResume', () => {
+  const now = 10_000_000;
+
+  it('is true for a fresh snapshot', () => {
+    expect(shouldResume(makeSession({ startedAt: now - 1000 }), now)).toBe(true);
+  });
+
+  it('is false for null', () => {
+    expect(shouldResume(null, now)).toBe(false);
+  });
+
+  it('is false for a snapshot older than the max age', () => {
+    const session = makeSession({ startedAt: now - RESUME_MAX_AGE_MS - 1 });
+    expect(shouldResume(session, now)).toBe(false);
+  });
+
+  it('is false for a future startedAt', () => {
+    expect(shouldResume(makeSession({ startedAt: now + 1000 }), now)).toBe(false);
+  });
+});

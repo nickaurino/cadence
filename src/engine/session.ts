@@ -28,6 +28,7 @@ import {
 const METERS_PER_STEP = 0.78;
 const METERS_PER_MILE = 1609.34;
 import { getMatchSettings } from '@/storage/store';
+import { PersistedSession, savePersisted, clearPersisted } from '@/storage/session-store';
 
 interface StartOptions {
   vibe: Vibe;
@@ -50,6 +51,7 @@ export class SessionEngine {
   private _page = 0;
   private _replenishing = false;
   private _committing = false; // a managed-cadence re-fetch is in flight
+  private _resuming = false; // a resume is in flight; recover if the player moved past our queue
   private _managedSince: number | null = null; // when the current drift began
   private _pendingTracks: MusicTrack[] | null = null; // queued for the next boundary
   private _smoothedPerceived: number | null = null; // EMA for a calmer displayed number
@@ -59,13 +61,55 @@ export class SessionEngine {
   private _cadenceSum = 0;
   private _cadenceCount = 0;
   private _playedIds = new Set<string>();
+  private _lastPersist = 0;
 
   onStateChange(cb: StateChangeCallback): void {
     this._onStateChange = cb;
   }
 
+  // Force a snapshot write immediately (e.g. when the app backgrounds).
+  persistNow(): void {
+    this._persist(true);
+  }
+
+  // Emit an immediate cadence estimate from pedometer history (resume/foreground).
+  async seedCadenceFromHistory(): Promise<void> {
+    await this._detector.seedFromHistory();
+  }
+
   private _emit(): void {
     if (this._state && this._onStateChange) this._onStateChange({ ...this._state });
+    this._persist();
+  }
+
+  // Snapshot the durable session state for resume. Null when no session is live.
+  serialize(): PersistedSession | null {
+    if (!this._state) return null;
+    return {
+      version: 1,
+      vibe: this._state.vibe,
+      startedAt: this._state.startedAt,
+      tracks: this._tracks,
+      index: this._index,
+      page: this._page,
+      settings: this._settings,
+      paceLocked: this._paceLocked,
+      managedCadence: this._state.managedCadence,
+      cadenceSum: this._cadenceSum,
+      cadenceCount: this._cadenceCount,
+      playedIds: [...this._playedIds],
+    };
+  }
+
+  // Throttled fire-and-forget write. Durable fields change seldom, so a 3s
+  // window keeps disk writes rare. Never throws into the engine.
+  private _persist(force = false): void {
+    if (!this._state) return;
+    const snapshot = this.serialize();
+    if (!snapshot) return;
+    if (!force && Date.now() - this._lastPersist < 3000) return;
+    this._lastPersist = Date.now();
+    savePersisted(snapshot).catch(() => {});
   }
 
   private _syncTracks(): void {
@@ -76,6 +120,7 @@ export class SessionEngine {
   }
 
   async start({ vibe }: StartOptions): Promise<void> {
+    this._resuming = false;
     this._smoothedPerceived = null;
     this._cadenceSum = 0;
     this._cadenceCount = 0;
@@ -100,6 +145,59 @@ export class SessionEngine {
     this._trackSub = addTrackChangeListener(({ trackId }) => this._onNativeTrackChange(trackId));
 
     // Don't play anything yet — wait until we read the user's actual pace.
+    this._detector.start((spm) => {
+      this._onPerceivedCadence(spm).catch((e) => {
+        console.error('[SessionEngine] cadence handler error:', e);
+      });
+    });
+  }
+
+  // Rehydrate from a saved snapshot instead of start(). The music is already
+  // playing on the system player, so we re-attach to it rather than refetch or
+  // replay the queue.
+  async resumeFrom(snapshot: PersistedSession): Promise<void> {
+    this._settings = snapshot.settings;
+    this._tracks = snapshot.tracks;
+    this._index = snapshot.index;
+    this._page = snapshot.page;
+    this._paceLocked = snapshot.paceLocked;
+    this._cadenceSum = snapshot.cadenceSum;
+    this._cadenceCount = snapshot.cadenceCount;
+    this._playedIds = new Set(snapshot.playedIds);
+
+    this._smoothedPerceived = null;
+    this._managedSince = null;
+    this._pendingTracks = null;
+    this._committing = false;
+    this._replenishing = false;
+
+    // Prefer the stored managed cadence — it's the real target after any pace
+    // ramp. Fall back to the session average for forward-compat/safety.
+    const managed =
+      snapshot.managedCadence ??
+      (snapshot.cadenceCount > 0 ? Math.round(snapshot.cadenceSum / snapshot.cadenceCount) : 0);
+
+    this._state = {
+      vibe: snapshot.vibe,
+      perceivedCadence: 0,
+      managedCadence: managed,
+      isCalibrating: false,
+      isLoadingTracks: false,
+      paceLocked: snapshot.paceLocked,
+      isPlaying: true,
+      notice: null,
+      currentTrack: null,
+      queue: [],
+      startedAt: snapshot.startedAt,
+    };
+
+    this._syncTracks();
+    this._resuming = true;
+    // Re-attaching makes the native side emit the currently-playing track,
+    // which realigns _index if the player advanced while we were away.
+    this._trackSub = addTrackChangeListener(({ trackId }) => this._onNativeTrackChange(trackId));
+    this._emit();
+
     this._detector.start((spm) => {
       this._onPerceivedCadence(spm).catch((e) => {
         console.error('[SessionEngine] cadence handler error:', e);
@@ -308,7 +406,19 @@ export class SessionEngine {
     }
 
     const idx = this._tracks.findIndex((t) => t.id === trackId);
-    if (idx === -1 || idx === this._index) return;
+    if (idx === -1) {
+      // The system player advanced past our saved queue while backgrounded. Rebuild
+      // a matched queue from the current pace so playback re-syncs and replenish resumes.
+      if (this._resuming && this._state.managedCadence > 0) {
+        this._resuming = false;
+        this._refetchAndLoad(this._state.managedCadence).catch((e) =>
+          console.error('[SessionEngine] resume recovery refetch error:', e),
+        );
+      }
+      return;
+    }
+    this._resuming = false;
+    if (idx === this._index) return;
     this._index = idx;
     this._state.isPlaying = true;
     this._syncTracks();
@@ -383,6 +493,7 @@ export class SessionEngine {
   }
 
   async stop(): Promise<void> {
+    clearPersisted().catch(() => {});
     this._detector.stop();
     this._trackSub?.remove();
     this._trackSub = null;
@@ -393,6 +504,7 @@ export class SessionEngine {
     this._page = 0;
     this._replenishing = false;
     this._committing = false;
+    this._resuming = false;
     this._managedSince = null;
     this._pendingTracks = null;
     this._smoothedPerceived = null;

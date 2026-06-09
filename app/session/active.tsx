@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Image, ActivityIndicator, AppState } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SessionEngine } from '@/engine/session';
 import { isAvailable } from '@/music/auth';
+import { loadPersisted, shouldResume, clearPersisted } from '@/storage/session-store';
 import { ManualPaceModal } from '@/components/ManualPaceModal';
 import { SessionState, Vibe } from '@/types';
 
 export default function ActiveSession() {
-  const { vibe } = useLocalSearchParams<{ vibe: Vibe }>();
+  const { vibe, resume } = useLocalSearchParams<{ vibe: Vibe; resume?: string }>();
   const engineRef = useRef(new SessionEngine());
   const [state, setState] = useState<SessionState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -21,11 +22,27 @@ export default function ActiveSession() {
 
     isAvailable().then(setMusicAvailable);
 
-    engine.start({ vibe }).catch((e) => {
-      setError(String(e));
+    (async () => {
+      if (resume === '1') {
+        const snap = await loadPersisted();
+        if (snap && shouldResume(snap, Date.now())) {
+          await engine.resumeFrom(snap);
+          return;
+        }
+      }
+      await clearPersisted();           // fresh start supersedes any old snapshot
+      await engine.start({ vibe });
+    })().catch((e) => setError(String(e)));
+
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'background') engine.persistNow();
+      else if (next === 'active') engine.seedCadenceFromHistory().catch(() => {});
     });
 
-    return () => { engine.stop(); };
+    return () => {
+      sub.remove();
+      engine.stop();
+    };
   }, []);
 
   async function handleEnd() {

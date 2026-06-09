@@ -52,9 +52,24 @@ jest.mock('@/music/player', () => ({
   disconnect: jest.fn().mockResolvedValue(undefined),
 }));
 
-import { playQueue, queueTrack, skipToNext, skipToPrevious, pause, resume } from '@/music/player';
+jest.mock('@/storage/session-store', () => ({
+  savePersisted: jest.fn().mockResolvedValue(undefined),
+  clearPersisted: jest.fn().mockResolvedValue(undefined),
+}));
+
+import {
+  playQueue,
+  queueTrack,
+  skipToNext,
+  skipToPrevious,
+  pause,
+  resume,
+  addTrackChangeListener,
+} from '@/music/player';
 import { getRecommendations } from '@/music/api';
 import { getMatchSettings } from '@/storage/store';
+import { savePersisted, clearPersisted, PersistedSession } from '@/storage/session-store';
+import { MatchSettings, MusicTrack } from '@/types';
 
 const flush = async () => {
   await new Promise((r) => setTimeout(r, 0));
@@ -281,4 +296,155 @@ test('togglePlayPause pauses then resumes', async () => {
   await engine.togglePlayPause();
   expect(resume).toHaveBeenCalled();
   expect(engine.getState().isPlaying).toBe(true);
+});
+
+const SETTINGS: MatchSettings = {
+  exact: true,
+  halfTime: true,
+  doubleTime: true,
+  tolerance: 0.06,
+  sensitivity: 'responsive',
+  songSwitching: 'immediate',
+};
+
+function makeSnapshot(overrides: Partial<PersistedSession> = {}): PersistedSession {
+  const tracks: MusicTrack[] = [
+    { id: 's1', name: 'S1', artist: 'A', albumArtUrl: '', tempo: 168 },
+    { id: 's2', name: 'S2', artist: 'B', albumArtUrl: '', tempo: 170 },
+    { id: 's3', name: 'S3', artist: 'C', albumArtUrl: '', tempo: 172 },
+  ];
+  return {
+    version: 1,
+    vibe: 'hype' as Vibe,
+    startedAt: 1000,
+    tracks,
+    index: 1,
+    page: 0,
+    settings: SETTINGS,
+    paceLocked: true,
+    managedCadence: 178,
+    cadenceSum: 510,
+    cadenceCount: 3,
+    playedIds: ['s1', 's2'],
+    ...overrides,
+  };
+}
+
+test('serialize returns null before start, and a v1 snapshot after', async () => {
+  const fresh = new SessionEngine();
+  expect(fresh.serialize()).toBeNull();
+
+  const engine = await startAndMove(); // vibe hype, t1+t2, managed 170
+
+  const snap = engine.serialize();
+  expect(snap).not.toBeNull();
+  expect(snap!.version).toBe(1);
+  expect(snap!.vibe).toBe('hype');
+  expect(snap!.tracks.map((t) => t.id)).toEqual(['t1', 't2']);
+  expect(snap!.index).toBe(0);
+  expect(snap!.managedCadence).toBe(170); // driven managed cadence is carried
+  expect(snap!.settings).toEqual(
+    expect.objectContaining({ sensitivity: 'responsive', songSwitching: 'immediate' }),
+  );
+  expect(Array.isArray(snap!.playedIds)).toBe(true);
+  expect(snap!.playedIds).toContain('t1');
+});
+
+test('resumeFrom rehydrates state without refetching or replaying', async () => {
+  const engine = new SessionEngine();
+  const snap = makeSnapshot();
+
+  await engine.resumeFrom(snap);
+
+  const state = engine.getState();
+  expect(state.vibe).toBe('hype');
+  expect(state.paceLocked).toBe(true);
+  expect(state.isPlaying).toBe(true);
+  expect(state.managedCadence).toBe(178); // stored managedCadence, not the avg (170)
+  expect(state.currentTrack?.id).toBe('s2'); // index 1
+
+  expect(engine.getQueuedTrackIds()).toEqual(['s3']); // tracks after index
+
+  expect(engine.getSummary().songsPlayed).toBe(2); // restored playedIds (s1, s2)
+
+  // Critically: no refetch, no replay.
+  expect(getRecommendations).not.toHaveBeenCalled();
+  expect(playQueue).not.toHaveBeenCalled();
+});
+
+test('resumeFrom re-attaches the track listener and starts the detector', async () => {
+  const engine = new SessionEngine();
+
+  await engine.resumeFrom(makeSnapshot());
+
+  expect(addTrackChangeListener).toHaveBeenCalled();
+  expect(mockHolder.cb).not.toBeNull(); // detector.start was given a callback
+});
+
+test('resume + unknown current track rebuilds a matched queue (recovery refetch)', async () => {
+  const engine = new SessionEngine();
+  // Snapshot has s1,s2,s3 and a managed cadence > 0.
+  await engine.resumeFrom(makeSnapshot({ paceLocked: false }));
+  (getRecommendations as jest.Mock).mockClear();
+
+  // Native emits a track that auto-advanced past our saved queue while backgrounded.
+  (engine as any)._onNativeTrackChange('unknown-id');
+  await flush();
+
+  expect(getRecommendations).toHaveBeenCalledWith(
+    expect.objectContaining({ targetBpm: 178 }),
+  );
+});
+
+test('resume + known current track realigns index without refetching', async () => {
+  const engine = new SessionEngine();
+  // Extra tracks so realigning to s2 stays above the replenish threshold,
+  // isolating the assertion to recovery (not the unrelated replenish refetch).
+  const tracks: MusicTrack[] = [
+    { id: 's1', name: 'S1', artist: 'A', albumArtUrl: '', tempo: 168 },
+    { id: 's2', name: 'S2', artist: 'B', albumArtUrl: '', tempo: 170 },
+    { id: 's3', name: 'S3', artist: 'C', albumArtUrl: '', tempo: 172 },
+    { id: 's4', name: 'S4', artist: 'D', albumArtUrl: '', tempo: 173 },
+    { id: 's5', name: 'S5', artist: 'E', albumArtUrl: '', tempo: 174 },
+  ];
+  await engine.resumeFrom(makeSnapshot({ index: 0, paceLocked: false, tracks }));
+  (getRecommendations as jest.Mock).mockClear();
+
+  (engine as any)._onNativeTrackChange('s2');
+  await flush();
+
+  expect(getRecommendations).not.toHaveBeenCalled();
+  expect(engine.getState().currentTrack?.id).toBe('s2');
+});
+
+test('non-resume unknown track does not trigger recovery refetch', async () => {
+  const engine = await startAndMove();
+  (getRecommendations as jest.Mock).mockClear();
+
+  (engine as any)._onNativeTrackChange('unknown-id');
+  await flush();
+
+  expect(getRecommendations).not.toHaveBeenCalled();
+});
+
+test('stop clears the persisted snapshot', async () => {
+  const engine = await startAndMove();
+
+  await engine.stop();
+
+  expect(clearPersisted).toHaveBeenCalled();
+});
+
+test('_persist(true) writes once; an immediate non-forced call is throttled', async () => {
+  const engine = await startAndMove();
+  (savePersisted as jest.Mock).mockClear();
+
+  (engine as any)._persist(true);
+  expect(savePersisted).toHaveBeenCalledTimes(1);
+  expect(savePersisted).toHaveBeenCalledWith(
+    expect.objectContaining({ version: 1, vibe: 'hype' }),
+  );
+
+  (engine as any)._persist();
+  expect(savePersisted).toHaveBeenCalledTimes(1); // throttled
 });

@@ -9,8 +9,8 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 }));
 
 import { getRecommendations } from '@/music/api';
-import { search, type RawSong } from '../../../modules/cadence-music-kit';
-import { _clearMemoryCache, type BpmProvider } from '@/music/bpm';
+import { search, type RawSong, type TrackFeatures } from '../../../modules/cadence-music-kit';
+import { _clearMemoryCache, type FeatureProvider } from '@/music/features';
 
 function song(id: string, name: string): RawSong {
   return {
@@ -23,16 +23,20 @@ function song(id: string, name: string): RawSong {
   };
 }
 
-// target cadence 180: exact-ish, half-time (90 -> 180), off-tempo, and unknown.
-const BPM: Record<string, number | null> = {
-  a: 178, // matches as-is (delta 2)
-  b: 90, // matches double-time (delta 0) -> closest
-  c: 120, // no multiple within tolerance -> excluded
-  d: null, // provider can't find it -> excluded
+// target cadence 180. Features per song:
+// a: 178 bpm, weak groove   -> matches (delta 2), poor pulse/stability
+// b: 90 bpm, strong groove  -> matches double-time (delta 0), punchy + steady
+// c: 120 bpm                -> no multiple within tolerance -> excluded
+// d: null                   -> provider can't analyze it -> excluded
+const FEATURES: Record<string, TrackFeatures | null> = {
+  a: { bpm: 178, pulseClarity: 0.2, tempoStability: 0.2 },
+  b: { bpm: 90, pulseClarity: 0.95, tempoStability: 0.95 },
+  c: { bpm: 120, pulseClarity: 0.9, tempoStability: 0.9 },
+  d: null,
 };
 
-const provider: BpmProvider = {
-  lookupBpm: jest.fn(async (s: RawSong) => BPM[s.id] ?? null),
+const provider: FeatureProvider = {
+  lookupFeatures: jest.fn(async (s: RawSong) => FEATURES[s.id] ?? null),
 };
 
 const allSongs = [song('a', 'A'), song('b', 'B'), song('c', 'C'), song('d', 'D')];
@@ -43,14 +47,30 @@ beforeEach(() => {
 });
 
 describe('getRecommendations', () => {
-  it('returns only cadence-matched songs, sorted by closeness, with real BPM', async () => {
+  it('returns only cadence-matched songs, sorted by composite score, with real BPM', async () => {
     (search as jest.Mock).mockResolvedValue(allSongs);
 
     const result = await getRecommendations({ targetBpm: 180, vibe: 'pop' }, provider);
 
-    expect(result.map((t) => t.id)).toEqual(['b', 'a']); // b (delta 0) before a (delta 2)
-    expect(result.find((t) => t.id === 'b')?.tempo).toBe(90); // true BPM, not effective
+    expect(result.map((t) => t.id)).toEqual(['b', 'a']);
+    expect(result.find((t) => t.id === 'b')?.tempo).toBe(90);
     expect(result.find((t) => t.id === 'a')?.tempo).toBe(178);
+  });
+
+  it('lets strong groove outrank a tighter raw BPM match', async () => {
+    const e = song('e', 'E');
+    (search as jest.Mock).mockResolvedValue([song('a', 'A'), e]);
+    const grooveProvider: FeatureProvider = {
+      lookupFeatures: jest.fn(async (s: RawSong) =>
+        s.id === 'a'
+          ? { bpm: 178, pulseClarity: 0.1, tempoStability: 0.1 }
+          : { bpm: 174, pulseClarity: 1, tempoStability: 1 }
+      ),
+    };
+
+    const result = await getRecommendations({ targetBpm: 180, vibe: 'pop' }, grooveProvider);
+
+    expect(result.map((t) => t.id)).toEqual(['e', 'a']);
   });
 
   it('searches every term for the vibe and dedupes by id', async () => {
@@ -58,7 +78,7 @@ describe('getRecommendations', () => {
 
     await getRecommendations({ targetBpm: 180, vibe: 'pop' }, provider);
 
-    expect(search).toHaveBeenCalledTimes(2); // 'pop' maps to two terms
+    expect(search).toHaveBeenCalledTimes(2);
     expect(search).toHaveBeenCalledWith('pop', 25, 0);
     expect(search).toHaveBeenCalledWith('top hits', 25, 0);
   });
@@ -83,7 +103,6 @@ describe('getRecommendations', () => {
       provider
     );
 
-    // 'a' (178) matches exactly; 'b' (90) only matched via double-time, now off.
     expect(result.map((t) => t.id)).toEqual(['a']);
   });
 

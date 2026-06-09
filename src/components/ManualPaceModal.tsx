@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Modal,
   View,
@@ -10,8 +10,8 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 
-const MIN = 120;
-const MAX = 200;
+const MIN = 50;
+const MAX = 250;
 const ITEM_HEIGHT = 44;
 const VISIBLE = 5;
 const WHEEL_HEIGHT = ITEM_HEIGHT * VISIBLE;
@@ -37,6 +37,24 @@ interface Props {
 
 export function ManualPaceModal({ visible, onClose, onConfirm }: Props) {
   const [selected, setSelected] = useState(DEFAULT);
+  const scrollRef = useRef<ScrollView>(null);
+
+  function scrollToValue(v: number) {
+    scrollRef.current?.scrollTo?.({ y: (v - MIN) * ITEM_HEIGHT, animated: false });
+  }
+
+  // Position the wheel under the center band whenever the sheet opens. Done
+  // imperatively through a ref rather than a `contentOffset` prop: a render-time
+  // contentOffset gets re-applied by iOS on every re-render, and since each
+  // scroll updates `selected` (a re-render), the wheel would be yanked back to
+  // its start on every drag. Depending only on `visible` keeps repositioning
+  // out of the drag path.
+  useEffect(() => {
+    if (!visible) return;
+    const id = requestAnimationFrame(() => scrollToValue(selected));
+    return () => cancelAnimationFrame(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   function onScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
     const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_HEIGHT);
@@ -51,14 +69,20 @@ export function ManualPaceModal({ visible, onClose, onConfirm }: Props) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={() => {}}>
+      <View style={styles.backdrop}>
+        {/* Catches taps outside the sheet to close. It sits behind the sheet,
+            so it never intercepts the wheel's scroll gesture (a Pressable
+            wrapping the ScrollView would steal the drag). */}
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <View style={styles.sheet}>
           <Text style={styles.title}>Set your pace</Text>
           <Text style={styles.sub}>Scroll to your steps per minute.</Text>
 
           <View style={styles.wheelWrap}>
             <View style={styles.centerBand} pointerEvents="none" />
             <ScrollView
+              ref={scrollRef}
+              testID="pace-wheel"
               style={{ height: WHEEL_HEIGHT }}
               contentContainerStyle={{ paddingVertical: PAD }}
               snapToInterval={ITEM_HEIGHT}
@@ -66,7 +90,7 @@ export function ManualPaceModal({ visible, onClose, onConfirm }: Props) {
               showsVerticalScrollIndicator={false}
               onScroll={onScroll}
               scrollEventThrottle={16}
-              contentOffset={{ x: 0, y: (DEFAULT - MIN) * ITEM_HEIGHT }}
+              onLayout={() => scrollToValue(selected)}
             >
               {VALUES.map((v) => {
                 const active = v === selected;
@@ -90,8 +114,8 @@ export function ManualPaceModal({ visible, onClose, onConfirm }: Props) {
           <Pressable style={styles.cancel} onPress={onClose}>
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
@@ -112,10 +136,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: '#2a2a2a',
   },
-  item: { height: ITEM_HEIGHT, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  item: { height: ITEM_HEIGHT, alignItems: 'center', justifyContent: 'center' },
   itemNum: { color: '#555', fontSize: 20 },
   itemNumActive: { color: '#fff', fontSize: 30, fontWeight: '700' },
-  itemTag: { color: '#444', fontSize: 12 },
+  // Floated to the right edge so the label never pushes the number off-center.
+  itemTag: { position: 'absolute', right: 24, height: ITEM_HEIGHT, lineHeight: ITEM_HEIGHT, color: '#444', fontSize: 12 },
   itemTagActive: { color: '#1DB954', fontSize: 13 },
   setBtn: { backgroundColor: '#1DB954', borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   setBtnText: { color: '#000', fontSize: 17, fontWeight: '700' },

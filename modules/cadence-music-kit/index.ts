@@ -25,9 +25,17 @@ export function search(term: string, limit: number, offset = 0): Promise<RawSong
   return CadenceMusicKit.search(term, limit, offset);
 }
 
-// Estimates a song's BPM from its preview clip, or null if undeterminable.
-export function analyzeBpm(previewUrl: string): Promise<number | null> {
-  return CadenceMusicKit.analyzeBpm(previewUrl);
+// On-device signals derived from a song's 30s preview clip (see TempoAnalyzer).
+export interface TrackFeatures {
+  bpm: number;
+  pulseClarity: number; // [0,1] how clear/punchy the dominant beat is
+  tempoStability: number; // [0,1] how steady the tempo holds across the clip
+}
+
+// Analyzes a song's preview clip into BPM + groove signals, or null if
+// undeterminable (e.g. no usable beat or no preview).
+export function analyzeTrack(previewUrl: string): Promise<TrackFeatures | null> {
+  return CadenceMusicKit.analyzeTrack(previewUrl);
 }
 
 export function playTrack(id: string): Promise<void> {
