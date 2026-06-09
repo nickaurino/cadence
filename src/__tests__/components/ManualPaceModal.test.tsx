@@ -8,7 +8,7 @@ import { ManualPaceModal } from '@/components/ManualPaceModal';
 
 function scrollTo(spm: number) {
   const ITEM_HEIGHT = 44;
-  const MIN = 120;
+  const MIN = 50;
   fireEvent.scroll(screen.getByTestId('pace-wheel'), {
     nativeEvent: { contentOffset: { x: 0, y: (spm - MIN) * ITEM_HEIGHT } },
   });
@@ -29,9 +29,9 @@ describe('ManualPaceModal', () => {
     const onConfirm = jest.fn();
     render(<ManualPaceModal visible onClose={jest.fn()} onConfirm={onConfirm} />);
 
-    scrollTo(260); // past MAX (200)
-    fireEvent.press(screen.getByText('Set 200 spm'));
+    scrollTo(300); // past MAX (250)
+    fireEvent.press(screen.getByText('Set 250 spm'));
 
-    expect(onConfirm).toHaveBeenCalledWith(200);
+    expect(onConfirm).toHaveBeenCalledWith(250);
   });
 });

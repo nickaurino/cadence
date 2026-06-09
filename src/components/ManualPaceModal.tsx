@@ -10,8 +10,8 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 
-const MIN = 120;
-const MAX = 200;
+const MIN = 50;
+const MAX = 250;
 const ITEM_HEIGHT = 44;
 const VISIBLE = 5;
 const WHEEL_HEIGHT = ITEM_HEIGHT * VISIBLE;
@@ -136,10 +136,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: '#2a2a2a',
   },
-  item: { height: ITEM_HEIGHT, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  item: { height: ITEM_HEIGHT, alignItems: 'center', justifyContent: 'center' },
   itemNum: { color: '#555', fontSize: 20 },
   itemNumActive: { color: '#fff', fontSize: 30, fontWeight: '700' },
-  itemTag: { color: '#444', fontSize: 12 },
+  // Floated to the right edge so the label never pushes the number off-center.
+  itemTag: { position: 'absolute', right: 24, height: ITEM_HEIGHT, lineHeight: ITEM_HEIGHT, color: '#444', fontSize: 12 },
   itemTagActive: { color: '#1DB954', fontSize: 13 },
   setBtn: { backgroundColor: '#1DB954', borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   setBtnText: { color: '#000', fontSize: 17, fontWeight: '700' },
