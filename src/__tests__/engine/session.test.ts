@@ -381,6 +381,52 @@ test('resumeFrom re-attaches the track listener and starts the detector', async 
   expect(mockHolder.cb).not.toBeNull(); // detector.start was given a callback
 });
 
+test('resume + unknown current track rebuilds a matched queue (recovery refetch)', async () => {
+  const engine = new SessionEngine();
+  // Snapshot has s1,s2,s3 and a managed cadence > 0.
+  await engine.resumeFrom(makeSnapshot({ paceLocked: false }));
+  (getRecommendations as jest.Mock).mockClear();
+
+  // Native emits a track that auto-advanced past our saved queue while backgrounded.
+  (engine as any)._onNativeTrackChange('unknown-id');
+  await flush();
+
+  expect(getRecommendations).toHaveBeenCalledWith(
+    expect.objectContaining({ targetBpm: 178 }),
+  );
+});
+
+test('resume + known current track realigns index without refetching', async () => {
+  const engine = new SessionEngine();
+  // Extra tracks so realigning to s2 stays above the replenish threshold,
+  // isolating the assertion to recovery (not the unrelated replenish refetch).
+  const tracks: MusicTrack[] = [
+    { id: 's1', name: 'S1', artist: 'A', albumArtUrl: '', tempo: 168 },
+    { id: 's2', name: 'S2', artist: 'B', albumArtUrl: '', tempo: 170 },
+    { id: 's3', name: 'S3', artist: 'C', albumArtUrl: '', tempo: 172 },
+    { id: 's4', name: 'S4', artist: 'D', albumArtUrl: '', tempo: 173 },
+    { id: 's5', name: 'S5', artist: 'E', albumArtUrl: '', tempo: 174 },
+  ];
+  await engine.resumeFrom(makeSnapshot({ index: 0, paceLocked: false, tracks }));
+  (getRecommendations as jest.Mock).mockClear();
+
+  (engine as any)._onNativeTrackChange('s2');
+  await flush();
+
+  expect(getRecommendations).not.toHaveBeenCalled();
+  expect(engine.getState().currentTrack?.id).toBe('s2');
+});
+
+test('non-resume unknown track does not trigger recovery refetch', async () => {
+  const engine = await startAndMove();
+  (getRecommendations as jest.Mock).mockClear();
+
+  (engine as any)._onNativeTrackChange('unknown-id');
+  await flush();
+
+  expect(getRecommendations).not.toHaveBeenCalled();
+});
+
 test('stop clears the persisted snapshot', async () => {
   const engine = await startAndMove();
 

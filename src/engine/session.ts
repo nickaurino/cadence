@@ -51,6 +51,7 @@ export class SessionEngine {
   private _page = 0;
   private _replenishing = false;
   private _committing = false; // a managed-cadence re-fetch is in flight
+  private _resuming = false; // a resume is in flight; recover if the player moved past our queue
   private _managedSince: number | null = null; // when the current drift began
   private _pendingTracks: MusicTrack[] | null = null; // queued for the next boundary
   private _smoothedPerceived: number | null = null; // EMA for a calmer displayed number
@@ -119,6 +120,7 @@ export class SessionEngine {
   }
 
   async start({ vibe }: StartOptions): Promise<void> {
+    this._resuming = false;
     this._smoothedPerceived = null;
     this._cadenceSum = 0;
     this._cadenceCount = 0;
@@ -190,6 +192,7 @@ export class SessionEngine {
     };
 
     this._syncTracks();
+    this._resuming = true;
     // Re-attaching makes the native side emit the currently-playing track,
     // which realigns _index if the player advanced while we were away.
     this._trackSub = addTrackChangeListener(({ trackId }) => this._onNativeTrackChange(trackId));
@@ -403,7 +406,19 @@ export class SessionEngine {
     }
 
     const idx = this._tracks.findIndex((t) => t.id === trackId);
-    if (idx === -1 || idx === this._index) return;
+    if (idx === -1) {
+      // The system player advanced past our saved queue while backgrounded. Rebuild
+      // a matched queue from the current pace so playback re-syncs and replenish resumes.
+      if (this._resuming && this._state.managedCadence > 0) {
+        this._resuming = false;
+        this._refetchAndLoad(this._state.managedCadence).catch((e) =>
+          console.error('[SessionEngine] resume recovery refetch error:', e),
+        );
+      }
+      return;
+    }
+    this._resuming = false;
+    if (idx === this._index) return;
     this._index = idx;
     this._state.isPlaying = true;
     this._syncTracks();
@@ -489,6 +504,7 @@ export class SessionEngine {
     this._page = 0;
     this._replenishing = false;
     this._committing = false;
+    this._resuming = false;
     this._managedSince = null;
     this._pendingTracks = null;
     this._smoothedPerceived = null;
