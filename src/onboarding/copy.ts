@@ -23,8 +23,8 @@ export const FRAMING = {
 export const PRIMERS = {
   motion: {
     title: 'Cadence reads your steps.',
-    body: "It measures your steps per minute to match music to your pace. It never tracks your location. We'll ask for Motion access right when you start your first session.",
-    cta: 'Sounds good',
+    body: 'It measures your steps per minute to match music to your pace. It never tracks your location. Tap below and iOS will ask for Motion access.',
+    cta: 'Allow motion access',
   },
   appleMusic: {
     title: 'Connect Apple Music.',
