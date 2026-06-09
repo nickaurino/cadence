@@ -7,6 +7,7 @@ import { isAvailable } from '@/music/auth';
 import { loadPersisted, shouldResume, clearPersisted } from '@/storage/session-store';
 import { ManualPaceModal } from '@/components/ManualPaceModal';
 import { SessionState, Vibe } from '@/types';
+import { colors } from '@/theme/colors';
 
 export default function ActiveSession() {
   const { vibe, resume } = useLocalSearchParams<{ vibe: Vibe; resume?: string }>();
@@ -64,7 +65,7 @@ export default function ActiveSession() {
   }
 
   if (!state) {
-    return <View style={styles.container}><ActivityIndicator color="#1DB954" size="large" /></View>;
+    return <View style={styles.container}><ActivityIndicator color={colors.accent} size="large" /></View>;
   }
 
   const engine = engineRef.current;
@@ -81,7 +82,7 @@ export default function ActiveSession() {
             name={state.paceLocked ? 'lock.fill' : 'lock.open.fill'}
             size={18}
             type="monochrome"
-            tintColor={state.paceLocked ? '#1DB954' : '#777'}
+            tintColor={state.paceLocked ? colors.accent : colors.faint}
           />
         </Pressable>
       </View>
@@ -100,7 +101,7 @@ export default function ActiveSession() {
 
       {state.isCalibrating && (
         <View style={styles.calibrating}>
-          <ActivityIndicator color="#f5a623" />
+          <ActivityIndicator color={colors.muted} />
           <Text style={styles.calibratingText}>
             Start moving and we&apos;ll match music to your rhythm.
           </Text>
@@ -109,7 +110,7 @@ export default function ActiveSession() {
 
       {state.isLoadingTracks && (
         <View style={styles.calibrating}>
-          <ActivityIndicator color="#1DB954" />
+          <ActivityIndicator color={colors.accent} />
           <Text style={styles.loadingText}>Finding songs for your pace…</Text>
         </View>
       )}
@@ -137,18 +138,18 @@ export default function ActiveSession() {
           </View>
           <View style={styles.inlineControls}>
             <Pressable hitSlop={12} onPress={() => engine.skipPrevious()}>
-              <SymbolView name="backward.end.fill" size={20} type="monochrome" tintColor="#fff" />
+              <SymbolView name="backward.end.fill" size={20} type="monochrome" tintColor={colors.text} />
             </Pressable>
             <Pressable hitSlop={12} onPress={() => engine.togglePlayPause()}>
               <SymbolView
                 name={state.isPlaying ? 'pause.fill' : 'play.fill'}
                 size={22}
                 type="monochrome"
-                tintColor="#fff"
+                tintColor={colors.text}
               />
             </Pressable>
             <Pressable hitSlop={12} onPress={() => engine.skipNext()}>
-              <SymbolView name="forward.end.fill" size={20} type="monochrome" tintColor="#fff" />
+              <SymbolView name="forward.end.fill" size={20} type="monochrome" tintColor={colors.text} />
             </Pressable>
           </View>
         </View>
@@ -180,31 +181,31 @@ export default function ActiveSession() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a', padding: 32, alignItems: 'center', justifyContent: 'center' },
+  container: { flex: 1, backgroundColor: colors.background, padding: 32, alignItems: 'center', justifyContent: 'center' },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 40 },
   statusDot: { width: 10, height: 10, borderRadius: 5 },
-  dotLocked: { backgroundColor: '#1DB954' },
-  dotCalibrating: { backgroundColor: '#f5a623' },
-  statusText: { color: '#aaa', fontSize: 14 },
-  notice: { color: '#f5a623', fontSize: 13, textAlign: 'center', marginBottom: 16, paddingHorizontal: 16 },
-  bpmLabel: { color: '#aaa', fontSize: 16, marginBottom: 4 },
-  bpmValue: { color: '#fff', fontSize: 88, fontWeight: '800', lineHeight: 96 },
-  bpmUnit: { color: '#555', fontSize: 14, marginBottom: 12 },
-  managed: { color: '#1DB954', fontSize: 14, marginBottom: 36 },
+  dotLocked: { backgroundColor: colors.accent },
+  dotCalibrating: { backgroundColor: colors.muted },
+  statusText: { color: colors.muted, fontSize: 14 },
+  notice: { color: colors.muted, fontSize: 13, textAlign: 'center', marginBottom: 16, paddingHorizontal: 16 },
+  bpmLabel: { color: colors.muted, fontSize: 16, marginBottom: 4 },
+  bpmValue: { color: colors.text, fontSize: 88, fontWeight: '800', lineHeight: 96 },
+  bpmUnit: { color: colors.disabled, fontSize: 14, marginBottom: 12 },
+  managed: { color: colors.accent, fontSize: 14, marginBottom: 36 },
   calibrating: { alignItems: 'center', gap: 12, marginBottom: 32 },
-  calibratingText: { color: '#f5a623', fontSize: 15, textAlign: 'center', paddingHorizontal: 24 },
-  loadingText: { color: '#1DB954', fontSize: 15, textAlign: 'center' },
+  calibratingText: { color: colors.muted, fontSize: 15, textAlign: 'center', paddingHorizontal: 24 },
+  loadingText: { color: colors.accent, fontSize: 15, textAlign: 'center' },
   trackCard: { flexDirection: 'row', alignItems: 'center', gap: 14, width: '100%', marginBottom: 40 },
   albumArt: { width: 56, height: 56, borderRadius: 8 },
   trackInfo: { flex: 1 },
-  trackName: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  trackArtist: { color: '#aaa', fontSize: 14, marginTop: 2 },
-  trackBpm: { color: '#1DB954', fontSize: 12, marginTop: 4 },
+  trackName: { color: colors.text, fontSize: 16, fontWeight: '600' },
+  trackArtist: { color: colors.muted, fontSize: 14, marginTop: 2 },
+  trackBpm: { color: colors.accent, fontSize: 12, marginTop: 4 },
   inlineControls: { flexDirection: 'row', alignItems: 'center', gap: 18 },
-  noMusicLabel: { color: '#555', fontSize: 13, marginBottom: 16 },
-  secondaryBtn: { borderWidth: 1.5, borderColor: '#333', borderRadius: 50, paddingVertical: 12, paddingHorizontal: 28, marginBottom: 14 },
-  secondaryBtnText: { color: '#aaa', fontSize: 16 },
+  noMusicLabel: { color: colors.disabled, fontSize: 13, marginBottom: 16 },
+  secondaryBtn: { borderWidth: 1.5, borderColor: colors.border, borderRadius: 50, paddingVertical: 12, paddingHorizontal: 28, marginBottom: 14 },
+  secondaryBtnText: { color: colors.muted, fontSize: 16 },
   endBtn: { paddingVertical: 12, paddingHorizontal: 28 },
-  endBtnText: { color: '#555', fontSize: 16 },
-  error: { color: '#ff4444', fontSize: 17, textAlign: 'center', marginBottom: 32 },
+  endBtnText: { color: colors.disabled, fontSize: 16 },
+  error: { color: colors.danger, fontSize: 17, textAlign: 'center', marginBottom: 32 },
 });

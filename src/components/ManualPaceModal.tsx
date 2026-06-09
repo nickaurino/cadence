@@ -9,6 +9,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
+import { colors } from '@/theme/colors';
 
 const MIN = 50;
 const MAX = 250;
@@ -121,10 +122,10 @@ export function ManualPaceModal({ visible, onClose, onConfirm }: Props) {
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: '#000000aa', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#161616', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 28, paddingBottom: 44 },
-  title: { color: '#fff', fontSize: 22, fontWeight: '700', marginBottom: 6 },
-  sub: { color: '#888', fontSize: 14, marginBottom: 12 },
+  backdrop: { flex: 1, backgroundColor: colors.scrim, justifyContent: 'flex-end' },
+  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 28, paddingBottom: 44 },
+  title: { color: colors.text, fontSize: 22, fontWeight: '700', marginBottom: 6 },
+  sub: { color: colors.muted, fontSize: 14, marginBottom: 12 },
   wheelWrap: { height: WHEEL_HEIGHT, marginBottom: 20 },
   centerBand: {
     position: 'absolute',
@@ -134,16 +135,16 @@ const styles = StyleSheet.create({
     height: ITEM_HEIGHT,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: colors.border,
   },
   item: { height: ITEM_HEIGHT, alignItems: 'center', justifyContent: 'center' },
-  itemNum: { color: '#555', fontSize: 20 },
-  itemNumActive: { color: '#fff', fontSize: 30, fontWeight: '700' },
+  itemNum: { color: colors.disabled, fontSize: 20 },
+  itemNumActive: { color: colors.text, fontSize: 30, fontWeight: '700' },
   // Floated to the right edge so the label never pushes the number off-center.
-  itemTag: { position: 'absolute', right: 24, height: ITEM_HEIGHT, lineHeight: ITEM_HEIGHT, color: '#444', fontSize: 12 },
-  itemTagActive: { color: '#1DB954', fontSize: 13 },
-  setBtn: { backgroundColor: '#1DB954', borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
-  setBtnText: { color: '#000', fontSize: 17, fontWeight: '700' },
+  itemTag: { position: 'absolute', right: 24, height: ITEM_HEIGHT, lineHeight: ITEM_HEIGHT, color: colors.disabled, fontSize: 12 },
+  itemTagActive: { color: colors.accent, fontSize: 13 },
+  setBtn: { backgroundColor: colors.accent, borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
+  setBtnText: { color: colors.onAccent, fontSize: 17, fontWeight: '700' },
   cancel: { alignItems: 'center', paddingVertical: 14 },
-  cancelText: { color: '#888', fontSize: 16 },
+  cancelText: { color: colors.muted, fontSize: 16 },
 });
