@@ -20,7 +20,8 @@ export const PRIMERS = {
     title: 'Cadence reads your steps.',
     body: 'It measures your steps per minute to match music to your pace. It never tracks your location.',
     cta: 'Allow motion access',
-    deniedNote: 'Cadence needs Motion access to match music automatically. You can turn it on in Settings, or set your own pace instead.',
+    skip: 'Not now',
+    deniedNote: 'Without Motion access, Cadence can’t match music to your pace on its own. You can turn it on in Settings now, or continue and do it later.',
   },
   appleMusic: {
     title: 'Connect Apple Music.',
