@@ -32,6 +32,9 @@ export default function ActiveSession() {
   // True for the very first session (onboarding wasn't complete on mount) so the
   // pre-music wait can show a reassurance line.
   const [firstRun, setFirstRun] = useState(false);
+  // Once the user picks a manual pace from the no-motion screen, don't let that
+  // screen re-trap them (e.g. recalibrate clears paceLocked) for the session.
+  const [noMotionDismissed, setNoMotionDismissed] = useState(false);
   const [playback, setPlayback] = useState<{ position: number; duration: number | null }>({
     position: 0,
     duration: null,
@@ -143,8 +146,9 @@ export default function ActiveSession() {
 
   // No-motion state: motion is unavailable and the user hasn't fallen back to a
   // manual pace yet. Show recoverable options instead of spinning in "Finding
-  // your pace". Once they set a manual pace (paceLocked), the normal session shows.
-  if (motionOk === false && !state.paceLocked) {
+  // your pace". `noMotionDismissed` keeps recalibrate (which clears paceLocked)
+  // from re-trapping them here for the rest of the session.
+  if (motionOk === false && !state.paceLocked && !noMotionDismissed) {
     return (
       <SafeAreaView style={styles.container} edges={[]}>
         <NoMotionState
@@ -154,7 +158,10 @@ export default function ActiveSession() {
         <ManualPaceModal
           visible={paceModal}
           onClose={() => setPaceModal(false)}
-          onConfirm={(spm) => engine.setManualPace(spm).catch((e) => console.warn('[active] setManualPace failed:', e))}
+          onConfirm={(spm) => {
+            setNoMotionDismissed(true);
+            engine.setManualPace(spm).catch((e) => console.warn('[active] setManualPace failed:', e));
+          }}
         />
       </SafeAreaView>
     );
@@ -273,9 +280,11 @@ export default function ActiveSession() {
           <PressableScale style={styles.pill} onPress={() => setPaceModal(true)}>
             <Text style={styles.secondaryBtnText}>Set pace</Text>
           </PressableScale>
-          <PressableScale style={styles.pill} onPress={() => engine.recalibrate()}>
-            <Text style={styles.secondaryBtnText}>↺  Recalibrate</Text>
-          </PressableScale>
+          {motionOk !== false && (
+            <PressableScale style={styles.pill} onPress={() => engine.recalibrate()}>
+              <Text style={styles.secondaryBtnText}>↺  Recalibrate</Text>
+            </PressableScale>
+          )}
         </View>
 
       <View style={styles.holdWrap}>
