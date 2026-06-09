@@ -7,6 +7,8 @@ import { SessionEngine } from '@/engine/session';
 import { sessionStatusLabel } from '@/engine/status';
 import { isAvailable } from '@/music/auth';
 import { loadPersisted, shouldResume, clearPersisted } from '@/storage/session-store';
+import { hasCompletedOnboarding, markOnboardingComplete } from '@/storage/store';
+import { FIRST_RUN_REASSURANCE } from '@/onboarding/copy';
 import { ManualPaceModal } from '@/components/ManualPaceModal';
 import { CadenceRing } from '@/components/CadenceRing';
 import { HoldToEnd } from '@/components/HoldToEnd';
@@ -27,6 +29,9 @@ export default function ActiveSession() {
   const [paceModal, setPaceModal] = useState(false);
   // null = not yet checked; false = motion unavailable (no-motion state)
   const [motionOk, setMotionOk] = useState<boolean | null>(null);
+  // True for the very first session (onboarding wasn't complete on mount) so the
+  // pre-music wait can show a reassurance line.
+  const [firstRun, setFirstRun] = useState(false);
   const [playback, setPlayback] = useState<{ position: number; duration: number | null }>({
     position: 0,
     duration: null,
@@ -41,6 +46,13 @@ export default function ActiveSession() {
 
     isAvailable().then(setMusicAvailable);
     canReadMotion().then(setMotionOk);
+
+    // Reaching a session is what completes onboarding (idempotent). If it wasn't
+    // complete on mount, this is the first session -> enable the reassurance line.
+    hasCompletedOnboarding().then((done) => {
+      if (!done) setFirstRun(true);
+      markOnboardingComplete().catch(() => {});
+    });
 
     (async () => {
       if (resume === '1') {
@@ -155,7 +167,11 @@ export default function ActiveSession() {
         </View>
       );
     if (s.isCalibrating)
-      return <Text style={styles.msgMuted} numberOfLines={1}>Start moving to match the beat.</Text>;
+      return (
+        <Text style={styles.msgMuted} numberOfLines={1}>
+          {firstRun ? FIRST_RUN_REASSURANCE : 'Start moving to match the beat.'}
+        </Text>
+      );
     if (!inPocket && s.managedCadence > 0)
       return (
         <View style={styles.chip}>

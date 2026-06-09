@@ -13,3 +13,24 @@ export const FRAMING = {
     cta: 'Get started',
   },
 } as const;
+
+// Permission primers (why-first, shown before each native prompt).
+export const PRIMERS = {
+  motion: {
+    title: 'Cadence reads your steps.',
+    body: 'It measures your steps per minute to match music to your pace. It never tracks your location.',
+    cta: 'Allow motion access',
+    deniedNote: 'Cadence needs Motion access to match music automatically. You can turn it on in Settings, or set your own pace instead.',
+  },
+  appleMusic: {
+    title: 'Connect Apple Music.',
+    body: 'Cadence finds songs in your library whose tempo matches your stride.',
+    disclaimer: 'Playback needs an Apple Music subscription. Pace detection works without one.',
+    cta: 'Connect Apple Music',
+    continueWithout: 'Continue without Apple Music',
+  },
+} as const;
+
+// Shown in the active screen's message slot during the first session's pre-music
+// wait (calibration + track load) so a first-timer does not think it broke.
+export const FIRST_RUN_REASSURANCE = 'Keep moving, finding songs that match your pace…';
