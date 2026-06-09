@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cadence — Accent Range</title>
+<style>
+  :root{--bg:#1a0f08;--surface:#2e1a0e;--border:#4a2e18;--text:#e8ddd0;--muted:#8a7060;--sand:#c8b89a;--dim:#3d2a1a}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;padding:44px 32px 80px}
+  h1{font-size:28px;font-weight:800;letter-spacing:-.02em}
+  .sub{color:var(--muted);margin:8px 0 28px;font-size:14px;max-width:780px;line-height:1.5}
+  h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--sand);margin:30px 0 14px}
+  .grid{display:flex;gap:18px;flex-wrap:wrap}
+  .tile{background:var(--surface);border:1px solid var(--border);border-radius:18px;
+    padding:20px 18px 16px;width:188px;display:flex;flex-direction:column;align-items:center}
+  .ring{width:118px;height:118px;border-radius:50%;display:flex;flex-direction:column;
+    align-items:center;justify-content:center}
+  .hero{font-size:46px;font-weight:800;line-height:1;letter-spacing:-.03em}
+  .unit{font-size:10px;color:var(--muted);margin-top:4px}
+  .cta{display:block;width:100%;text-align:center;margin-top:16px;padding:11px;border-radius:11px;
+    font-size:14px;font-weight:700;color:var(--bg)}
+  .name{font-size:14px;font-weight:700;margin-top:14px}
+  .hex{font-family:ui-monospace,Menlo,monospace;color:var(--muted);font-size:12px;margin-top:3px}
+  .ratio{font-size:11px;color:var(--muted);margin-top:2px}
+  .id{position:absolute;top:10px;left:14px;font-size:11px;color:var(--muted);font-weight:700}
+  .tile{position:relative}
+</style>
+</head>
+<body>
+  <h1>Cadence — Accent Range</h1>
+  <p class="sub">Every accent on the George background, shown as the in-the-pocket hero (ring + 172)
+  and the "Start run" CTA. Numbers are the WCAG contrast of the accent on <code>#1a0f08</code>
+  (hero numerals want ≥4.5:1). Just tell me the <b>id</b> (or two) you want to pursue, and I'll
+  build the full mockup + desaturated "shifting" state around it.</p>
+  <div id="root"></div>
+
+<script>
+  const groups = {
+    'Warm — orange / red / earth': [
+      {id:'W1', name:'Ember Coral', hex:'#F0764B'},
+      {id:'W2', name:'Clay Terracotta', hex:'#C56B45'},
+      {id:'W3', name:'Rust', hex:'#B5471F'},
+      {id:'W4', name:'Brick Crimson', hex:'#D8443B'},
+      {id:'W5', name:'Marigold Amber', hex:'#E8A23D'},
+      {id:'W6', name:'Brass Gold', hex:'#D4A24E'},
+      {id:'W7', name:'Dusty Rose', hex:'#CD8470'},
+    ],
+    'Cool — green / teal / blue': [
+      {id:'C1', name:'Verdigris Teal', hex:'#2DB7A3'},
+      {id:'C2', name:'Sage', hex:'#8FB07E'},
+      {id:'C3', name:'Sky Blue', hex:'#5AA9E6'},
+    ],
+    'Other — pink / violet': [
+      {id:'O1', name:'Mauve Orchid', hex:'#B98AC9'},
+      {id:'O2', name:'Hot Coral Pink', hex:'#F06B83'},
+    ],
+  };
+
+  // WCAG contrast vs #1a0f08
+  function lum(hex){
+    const c=[1,3,5].map(i=>parseInt(hex.substr(i,2),16)/255).map(v=>v<=.03928?v/12.92:((v+.055)/1.055)**2.4);
+    return .2126*c[0]+.7152*c[1]+.0722*c[2];
+  }
+  const bgL = lum('#1a0f08');
+  function ratio(hex){const a=lum(hex);const hi=Math.max(a,bgL),lo=Math.min(a,bgL);return ((hi+.05)/(lo+.05)).toFixed(1)+':1';}
+
+  const root=document.getElementById('root');
+  root.innerHTML = Object.entries(groups).map(([title,items])=>`
+    <h2>${title}</h2>
+    <div class="grid">
+      ${items.map(c=>`
+        <div class="tile">
+          <div class="id">${c.id}</div>
+          <div class="ring" style="border:5px solid ${c.hex};box-shadow:0 0 22px -6px ${c.hex}80">
+            <div class="hero" style="color:${c.hex}">172</div>
+            <div class="unit">steps / min</div>
+          </div>
+          <a class="cta" style="background:${c.hex}">Start run</a>
+          <div class="name">${c.name}</div>
+          <div class="hex">${c.hex}</div>
+          <div class="ratio">${ratio(c.hex)} on bg</div>
+        </div>`).join('')}
+    </div>`).join('');
+</script>
+</body>
+</html>

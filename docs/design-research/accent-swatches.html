@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cadence — Accent Swatches</title>
+<style>
+  :root{
+    --bg:#1a0f08;      /* George Undercoat */
+    --surface:#2e1a0e; /* George Coat */
+    --border:#4a2e18;  /* Walnut Grain */
+    --text:#e8ddd0;    /* Bed Light */
+    --muted:#8a7060;   /* Bed Dark */
+    --sand:#c8b89a;    /* Bed Medium */
+    --dim:#3d2a1a;     /* Dark Walnut */
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;padding:48px 32px 80px;
+  }
+  h1{font-size:30px;font-weight:800;letter-spacing:-.02em}
+  .sub{color:var(--muted);margin:8px 0 36px;font-size:15px;max-width:760px;line-height:1.5}
+  .grid{display:flex;gap:28px;flex-wrap:wrap}
+  .col{flex:1;min-width:300px;max-width:360px}
+  .name{font-size:18px;font-weight:700;margin-bottom:4px}
+  .hex{font-family:ui-monospace,Menlo,monospace;color:var(--muted);font-size:13px;margin-bottom:16px}
+  .card{
+    background:var(--surface);border:1px solid var(--border);border-radius:22px;
+    padding:26px 24px 22px;margin-bottom:14px;
+  }
+  .state-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+  .ringwrap{display:flex;justify-content:center;margin-bottom:6px}
+  .ring{
+    width:168px;height:168px;border-radius:50%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+  }
+  .hero{font-size:64px;font-weight:800;line-height:1;letter-spacing:-.03em}
+  .unit{font-size:12px;color:var(--muted);margin-top:6px}
+  .chip{
+    display:inline-block;margin:14px auto 0;padding:5px 12px;border-radius:50px;
+    background:var(--dim);color:var(--sand);font-size:12px;font-weight:600;
+  }
+  .center{text-align:center}
+  .track{display:flex;align-items:center;gap:12px;margin:20px 2px 4px}
+  .art{width:42px;height:42px;border-radius:8px;background:linear-gradient(135deg,#5a3a22,#2e1a0e)}
+  .tname{font-size:14px;font-weight:600}
+  .tartist{font-size:12px;color:var(--muted);margin-top:2px}
+  .posbar{height:3px;border-radius:2px;background:#43301f;margin-top:14px;overflow:hidden}
+  .posfill{height:100%;width:42%}
+  .cta{
+    display:block;width:100%;text-align:center;margin-top:18px;padding:15px;
+    border-radius:14px;font-size:16px;font-weight:700;color:var(--bg);
+  }
+  .lockrow{display:flex;align-items:center;gap:7px;margin-top:16px;color:var(--muted);font-size:13px}
+  .dot{width:9px;height:9px;border-radius:50%}
+  .meta{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5}
+  .strip{display:flex;height:40px;border-radius:10px;overflow:hidden;margin-top:6px;border:1px solid var(--border)}
+  .strip div{flex:1}
+  footer{color:var(--muted);font-size:13px;margin-top:48px;max-width:760px;line-height:1.6}
+  code{font-family:ui-monospace,Menlo,monospace;color:var(--sand)}
+</style>
+</head>
+<body>
+  <h1>Cadence — Accent Candidates</h1>
+  <p class="sub">Each accent shown on the real George surfaces. Left card = <b>in the pocket</b>
+  (accent saturated, ring lit, hero rests on managed). Right card = <b>shifting pace</b>
+  (accent desaturated toward muted brown, hero gone live). The accent is the lock signal —
+  judge it as "does the left feel locked-in and energetic, does the right feel calm?"</p>
+
+  <div class="grid" id="grid"></div>
+
+  <footer>
+    Base palette is unchanged George (background <code>#1a0f08</code> · surface <code>#2e1a0e</code> ·
+    text <code>#e8ddd0</code> · muted <code>#8a7060</code>). Only the accent that replaces the old
+    Spotify green changes. Brass Gold is also shown as the proposed <i>secondary</i> (achievement /
+    summary), independent of which live accent wins.
+  </footer>
+
+<script>
+  const PAL = {bg:'#1a0f08',surface:'#2e1a0e',border:'#4a2e18',text:'#e8ddd0',muted:'#8a7060',sand:'#c8b89a',dim:'#3d2a1a'};
+  const candidates = [
+    {name:'Ember Coral', hex:'#F0764B', drift:'#8a6a55', ratio:'6.6:1', note:'Warm fire-family. Reads sunrise / exertion. Research lead.'},
+    {name:'Brass Gold',  hex:'#D4A24E', drift:'#8a7858', ratio:'8.1:1', note:'Premium but trophy-like. Proposed as the secondary, not the live accent.'},
+    {name:'Verdigris Teal', hex:'#2DB7A3', drift:'#5f8a82', ratio:'7.5:1', note:'Cool complementary. High energy but fights the warm-comfort world.'},
+  ];
+
+  function stateCard(c, locked){
+    const accent = locked ? c.hex : c.drift;
+    const ringBorder = locked
+      ? `6px solid ${c.hex}`
+      : `6px solid ${c.drift}`;
+    const ringGlow = locked ? `box-shadow:0 0 28px -6px ${c.hex}80;` : '';
+    return `
+    <div class="card">
+      <div class="state-label">${locked ? 'In the pocket' : 'Shifting pace'}</div>
+      <div class="ringwrap">
+        <div class="ring center" style="border:${ringBorder};${ringGlow}">
+          <div class="hero" style="color:${accent}">172</div>
+          <div class="unit">steps / min</div>
+        </div>
+      </div>
+      <div class="center"><span class="chip">Matching 172</span></div>
+      <div class="track">
+        <div class="art"></div>
+        <div style="flex:1">
+          <div class="tname">Midnight City</div>
+          <div class="tartist">M83 · 172 BPM</div>
+          <div class="posbar"><div class="posfill" style="background:${accent}"></div></div>
+        </div>
+      </div>
+      <div class="lockrow"><span class="dot" style="background:${accent}"></span> ${locked ? 'Locked to the beat' : 'Finding the beat…'}</div>
+    </div>`;
+  }
+
+  const grid = document.getElementById('grid');
+  grid.innerHTML = candidates.map(c => `
+    <div class="col">
+      <div class="name">${c.name}</div>
+      <div class="hex">${c.hex} · ${c.ratio} on bg</div>
+      ${stateCard(c, true)}
+      ${stateCard(c, false)}
+      <a class="cta" style="background:${c.hex}">Start run</a>
+      <div class="strip">
+        <div style="background:${PAL.bg}"></div>
+        <div style="background:${PAL.surface}"></div>
+        <div style="background:${PAL.border}"></div>
+        <div style="background:${c.hex}"></div>
+        <div style="background:${PAL.sand}"></div>
+        <div style="background:${PAL.text}"></div>
+      </div>
+      <div class="meta">${c.note}</div>
+    </div>
+  `).join('');
+</script>
+</body>
+</html>

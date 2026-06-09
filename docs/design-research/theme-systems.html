@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cadence — Visual Theme Systems</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira:wght@400;500;600;700;800&family=Saira+Semi+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:#0d0805;color:#e8ddd0;
+    font-family:'Saira',system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:48px 32px 90px;
+  }
+  .page-h1{font-size:34px;font-weight:800;letter-spacing:-.02em}
+  .page-sub{color:#8a7060;margin:10px 0 8px;font-size:15px;max-width:820px;line-height:1.55}
+  .page-sub b{color:#c8b89a;font-weight:600}
+
+  .theme{margin-top:52px;border-top:1px solid #2a1c12;padding-top:30px}
+  .theme-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:4px}
+  .theme-name{font-size:23px;font-weight:800;letter-spacing:-.01em}
+  .theme-tag{color:#8a7060;font-size:14px}
+  .theme-when{display:inline-block;margin:6px 0 22px;font-size:12px;font-weight:600;letter-spacing:.1em;
+    text-transform:uppercase;color:#c8b89a}
+
+  .layout{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start}
+  .cards{display:flex;gap:22px;flex-wrap:wrap}
+
+  /* phone run-screen card */
+  .phone{width:300px;border-radius:30px;padding:26px 22px 24px;position:relative;overflow:hidden;
+    border:1px solid var(--border);background:var(--bg)}
+  .phone::before{content:'';position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(120% 70% at 50% -10%, var(--halo), transparent 60%)}
+  .phone>*{position:relative}
+  .status{display:flex;align-items:center;gap:8px;margin-bottom:20px}
+  .status .ico{width:15px;height:15px;border-radius:4px;border:2px solid var(--accent)}
+  .status .txt{font-size:12.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .status .pip{margin-left:auto;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+
+  .ringwrap{display:flex;justify-content:center;position:relative;margin:4px 0 2px}
+  .ring{position:relative;width:200px;height:200px}
+  .ring svg{transform:rotate(-90deg);display:block}
+  .ring .num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .ring .hero{font-family:'Saira Semi Condensed','Saira',sans-serif;font-size:72px;font-weight:800;
+    line-height:.9;letter-spacing:-.02em;color:var(--accent)}
+  .ring .unit{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:7px}
+  .pulse{animation:pulse 2.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{filter:drop-shadow(0 0 6px var(--glow))}50%{filter:drop-shadow(0 0 16px var(--glow))}}
+
+  .chip{display:block;width:max-content;margin:14px auto 0;padding:5px 13px;border-radius:50px;
+    background:var(--chip);color:var(--accent);font-size:12px;font-weight:700;letter-spacing:.02em}
+
+  .song{display:flex;align-items:center;gap:12px;margin:22px 2px 0}
+  .art{width:46px;height:46px;border-radius:9px;background:var(--art);flex:none;position:relative;overflow:hidden}
+  .art::after{content:'';position:absolute;inset:0;background:
+    radial-gradient(circle at 30% 25%, var(--accent), transparent 55%);opacity:.5}
+  .song .meta{flex:1;min-width:0}
+  .song .t{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .song .a{font-size:12px;color:var(--muted);margin-top:1px}
+  .pos{height:3px;border-radius:2px;background:var(--track);margin-top:9px;overflow:hidden}
+  .pos i{display:block;height:100%;width:44%;background:var(--accent);border-radius:2px}
+
+  .cta{display:block;text-align:center;margin-top:20px;padding:15px;border-radius:15px;
+    font-size:16px;font-weight:700;letter-spacing:.02em;background:var(--accent);color:var(--cta-text)}
+  .endhint{text-align:center;margin-top:11px;font-size:11.5px;color:var(--muted);letter-spacing:.04em}
+
+  .phone .badge{position:absolute;top:18px;right:18px;font-size:10px;font-weight:700;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted)}
+
+  /* swatch + notes panel */
+  .panel{flex:1;min-width:280px;max-width:380px}
+  .panel h4{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#8a7060;margin:0 0 12px}
+  .sw{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #211610}
+  .sw .box{width:42px;height:30px;border-radius:7px;border:1px solid rgba(255,255,255,.08);flex:none}
+  .sw .role{font-size:13px;font-weight:600;color:#e8ddd0;width:92px}
+  .sw .hx{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#8a7060}
+  .sw .nick{font-size:11px;color:#6f5a4a;margin-left:auto}
+  .notes{margin-top:16px;font-size:12.5px;color:#9a8071;line-height:1.6}
+  .notes .ok{color:#7fc08a}.notes .warn{color:#d9a23d}
+  .notes code{font-family:ui-monospace,Menlo,monospace;color:#c8b89a}
+</style>
+</head>
+<body>
+  <h1 class="page-h1">Cadence — Visual Theme Systems</h1>
+  <p class="page-sub">Full systems, not accents on one brown. Each theme tunes <b>background, surface,
+  text, and accent together</b>. George stays the warm identity layer; Cadence gets the energy.
+  Rings shown <b>in the pocket</b> (accent arc lit, gentle pulse = alive). Contrast computed live (WCAG vs background).</p>
+
+  <div id="root"></div>
+
+<script>
+  /* ---------- contrast helpers ---------- */
+  function lum(hex){const c=[1,3,5].map(i=>parseInt(hex.substr(i,2),16)/255)
+    .map(v=>v<=.03928?v/12.92:((v+.055)/1.055)**2.4);return .2126*c[0]+.7152*c[1]+.0722*c[2];}
+  function ratio(a,b){const x=lum(a),y=lum(b),hi=Math.max(x,y),lo=Math.min(x,y);return ((hi+.05)/(lo+.05));}
+  const r2=(a,b)=>ratio(a,b).toFixed(1)+':1';
+  const grade=(v,big)=>{const t=big?3:4.5;return v>=t?'<span class="ok">AA✓</span>':'<span class="warn">large-only</span>';};
+
+  /* ---------- theme token systems ---------- */
+  const THEMES = [
+    {
+      key:'dark', name:'1 · Dark Warm Athletic',
+      tag:'Espresso George base + Ember Coral energy. Premium, music-driven.',
+      when:'Built for night runs',
+      t:{bg:'#1a0f08',surface:'#2a1810',border:'#4a2e18',text:'#f3ebdf',muted:'#9a8071',
+         accent:'#F0764B',accentDim:'#3a2415',track:'#43301f',chip:'#3a2415',art:'#3a2415',
+         halo:'rgba(240,118,75,.10)',glow:'rgba(240,118,75,.55)',cta:'#1a0f08'},
+      arc:.72, pulse:true, default:true,
+      roles:[['background','#1a0f08','George Undercoat'],['surface','#2a1810','Walnut card'],
+        ['border','#4a2e18','Walnut Grain'],['text','#f3ebdf','Bed Light+'],['muted','#9a8071','Bed Dark'],
+        ['accent','#F0764B','Ember Coral'],['accentDim','#3a2415','Coal Ember']],
+    },
+    {
+      key:'light', name:'2 · Light Warm Fitness',
+      tag:'Warm cream from Bed Light, dark George text, coral energy. Clean & sunny.',
+      when:'Built for morning runs',
+      t:{bg:'#f5ece0',surface:'#fffaf1',border:'#e4d6c2',text:'#27170c',muted:'#8a7460',
+         accent:'#DD4F2A',accentDim:'#f4d9c9',track:'#ead9c4',chip:'#f6e3d5',art:'#e9d6bf',
+         halo:'rgba(221,79,42,.07)',glow:'rgba(221,79,42,.30)',cta:'#fffaf1'},
+      arc:.72, pulse:true,
+      roles:[['background','#f5ece0','Warm Cream'],['surface','#fffaf1','Linen card'],
+        ['border','#e4d6c2','Sand line'],['text','#27170c','Dark Walnut'],['muted','#8a7460','Bed Dark'],
+        ['accent','#DD4F2A','Sun Coral'],['accentDim','#f4d9c9','Coral Wash']],
+    },
+    {
+      key:'hybrid', name:'3 · Hybrid',
+      tag:'Cozy George for brand / settings; electric for the run. The run screen feels more alive than the rest.',
+      when:'Best of both — calm app, electric run',
+      hybrid:[
+        {label:'Brand & settings — cozy George',
+         t:{bg:'#1a0f08',surface:'#2e1a0e',border:'#4a2e18',text:'#e8ddd0',muted:'#8a7060',
+            accent:'#c8b89a',accentDim:'#3d2a1a',track:'#3d2a1a',chip:'#3d2a1a',art:'#3d2a1a',
+            halo:'rgba(200,184,154,.05)',glow:'rgba(200,184,154,.25)',cta:'#1a0f08'},
+         arc:.55, pulse:false, calm:true},
+        {label:'Active run — electric',
+         t:{bg:'#100904',surface:'#241510',border:'#5a3720',text:'#f8efe4',muted:'#a08470',
+            accent:'#FF7A45',accentDim:'#3a2415',track:'#3a2415',chip:'#3a2415',art:'#3a2415',
+            halo:'rgba(255,122,69,.16)',glow:'rgba(255,122,69,.7)',cta:'#100904'},
+         arc:.78, pulse:true},
+      ],
+    },
+  ];
+
+  /* ---------- render ---------- */
+  const C=2*Math.PI*86;
+  function ring(t,arc,pulse){
+    return `<div class="ring">
+      <svg width="200" height="200" viewBox="0 0 200 200" class="${pulse?'pulse':''}" style="--glow:${t.glow}">
+        <circle cx="100" cy="100" r="86" fill="none" stroke="${t.track}" stroke-width="12"/>
+        <circle cx="100" cy="100" r="86" fill="none" stroke="${t.accent}" stroke-width="12"
+          stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-arc)}"/>
+      </svg>
+      <div class="num"><div class="hero">172</div><div class="unit">steps / min</div></div>
+    </div>`;
+  }
+  function phone(t,opt){
+    const calm=opt.calm;
+    return `<div class="phone" style="
+      --bg:${t.bg};--surface:${t.surface};--border:${t.border};--text:${t.text};--muted:${t.muted};
+      --accent:${t.accent};--track:${t.track};--chip:${t.chip};--art:${t.art};--halo:${t.halo};
+      --cta-text:${t.cta};--glow:${t.glow}">
+      ${opt.badge?`<div class="badge">${opt.badge}</div>`:''}
+      <div class="status">
+        <span class="ico"></span>
+        <span class="txt">${calm?'Settings':'In the pocket'}</span>
+        <span class="pip"></span>
+      </div>
+      ${ring(t,opt.arc,opt.pulse)}
+      <div class="chip" style="background:${t.chip};color:${t.accent}">Matching 172</div>
+      <div class="song">
+        <div class="art" style="background:${t.art}"></div>
+        <div class="meta">
+          <div class="t">Midnight City</div>
+          <div class="a">M83 · 172 BPM ·  ×1</div>
+          <div class="pos"><i></i></div>
+        </div>
+      </div>
+      <a class="cta">${calm?'Save changes':'Start run'}</a>
+      ${calm?'':'<div class="endhint">Hold to end session</div>'}
+    </div>`;
+  }
+  function swatches(roles,bg){
+    return `<h4>Tokens</h4>` + roles.map(([role,hex,nick])=>`
+      <div class="sw"><div class="box" style="background:${hex}"></div>
+        <div class="role">${role}</div><div class="hx">${hex}</div><div class="nick">${nick}</div></div>`).join('');
+  }
+  function notes(t){
+    const an=ratio(t.accent,t.bg), tn=ratio(t.text,t.bg), ct=ratio(t.cta,t.accent);
+    return `<div class="notes">
+      Accent on bg: <code>${r2(t.accent,t.bg)}</code> ${grade(an,true)} (hero numerals are large) ·
+      Text on bg: <code>${r2(t.text,t.bg)}</code> ${grade(tn,false)} ·
+      CTA label on accent: <code>${r2(t.cta,t.accent)}</code> ${grade(ct,true)}
+    </div>`;
+  }
+
+  document.getElementById('root').innerHTML = THEMES.map(th=>{
+    let cards, panel;
+    if(th.hybrid){
+      cards = th.hybrid.map(h=>phone(h.t,{arc:h.arc,pulse:h.pulse,calm:h.calm,badge:h.label})).join('');
+      panel = `<div class="panel">
+        ${swatches(THEMES[0].roles.map(r=>[r[0], (h=>h)(0)]) && [
+          ['background',th.hybrid[1].t.bg,'Electric bg'],['surface',th.hybrid[1].t.surface,'Run card'],
+          ['border',th.hybrid[1].t.border,'Ember line'],['text',th.hybrid[1].t.text,'Bright cream'],
+          ['muted',th.hybrid[1].t.muted,'Warm muted'],['accent',th.hybrid[1].t.accent,'Hot Ember'],
+          ['accentDim',th.hybrid[1].t.accentDim,'Coal Ember']], th.hybrid[1].t.bg)}
+        ${notes(th.hybrid[1].t)}
+        <div class="notes" style="margin-top:14px">Left card uses the calm George accent
+        (<code>#c8b89a</code>); right "run" card switches to <code>#FF7A45</code> on a deeper
+        <code>#100904</code> — the run screen reads hotter and more alive than the rest of the app.</div>
+      </div>`;
+    } else {
+      cards = phone(th.t,{arc:th.arc,pulse:th.pulse,badge:th.default?'Recommended':''});
+      panel = `<div class="panel">${swatches(th.roles,th.t.bg)}${notes(th.t)}</div>`;
+    }
+    return `<section class="theme">
+      <div class="theme-head"><span class="theme-name">${th.name}</span>
+        <span class="theme-tag">${th.tag}</span></div>
+      <div class="theme-when">${th.when}</div>
+      <div class="layout"><div class="cards">${cards}</div>${panel}</div>
+    </section>`;
+  }).join('');
+</script>
+</body>
+</html>
