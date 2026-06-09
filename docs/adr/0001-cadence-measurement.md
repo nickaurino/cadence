@@ -21,7 +21,8 @@ Updates arrive ~1×/second while moving and **pause when stationary** (no zero e
 
 Two concepts, split apart (see CONTEXT.md):
 
-- **Perceived cadence** — live, smoothed steps/min; the hero number.
+- **Perceived cadence** — live, smoothed steps/min; the hero number *while
+  shifting pace* (refined by ADR 0002: the hero rests on managed when in the pocket).
 - **Managed cadence** — the stable value the song queue is matched to.
 
 **Detector (`src/sensors/cadence.ts`):**
