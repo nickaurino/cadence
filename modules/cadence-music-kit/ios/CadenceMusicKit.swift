@@ -95,6 +95,22 @@ public final class CadenceMusicKitModule: Module {
     AsyncFunction("skipToPrevious") { () async throws in
       try await SystemMusicPlayer.shared.skipToPreviousEntry()
     }
+
+    // Current playback position/length for the song progress bar (display only —
+    // the system player can't be reliably seeked, so there's no scrub). Position
+    // from the MusicKit player's playbackTime; duration from its current song.
+    AsyncFunction("getPlaybackStatus") { () -> [String: Any?] in
+      let player = SystemMusicPlayer.shared
+      var duration: TimeInterval? = nil
+      if case .song(let song)? = player.queue.currentEntry?.item {
+        duration = song.duration
+      }
+      return [
+        "position": player.playbackTime,
+        "duration": duration,
+        "isPlaying": player.state.playbackStatus == .playing,
+      ]
+    }
   }
 
   // Observes the system player's queue so JS hears about track changes,

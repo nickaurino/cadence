@@ -68,6 +68,17 @@ export function skipToPrevious(): Promise<void> {
   return CadenceMusicKit.skipToPrevious();
 }
 
+export interface PlaybackStatus {
+  position: number; // seconds into the current track
+  duration: number | null; // track length in seconds, null until loaded
+  isPlaying: boolean;
+}
+
+// Current playback position/length for the song progress bar (display only).
+export function getPlaybackStatus(): Promise<PlaybackStatus> {
+  return CadenceMusicKit.getPlaybackStatus();
+}
+
 export type TrackChangeEvent = { trackId: string; title: string };
 
 // Fires when the system player's current track changes — including when a song

@@ -28,6 +28,10 @@ export async function skipToPrevious(): Promise<void> {
   await CadenceMusicKit.skipToPrevious();
 }
 
+export async function getPlaybackStatus(): Promise<CadenceMusicKit.PlaybackStatus> {
+  return CadenceMusicKit.getPlaybackStatus();
+}
+
 export function addTrackChangeListener(
   cb: (event: { trackId: string; title: string }) => void
 ): { remove: () => void } {
