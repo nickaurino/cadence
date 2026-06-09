@@ -6,6 +6,8 @@ import { SessionEngine } from '@/engine/session';
 import { isAvailable } from '@/music/auth';
 import { loadPersisted, shouldResume, clearPersisted } from '@/storage/session-store';
 import { ManualPaceModal } from '@/components/ManualPaceModal';
+import { CadenceRing } from '@/components/CadenceRing';
+import { HoldToEnd } from '@/components/HoldToEnd';
 import { SessionState, Vibe } from '@/types';
 import { colors } from '@/theme/colors';
 
@@ -70,12 +72,20 @@ export default function ActiveSession() {
 
   const engine = engineRef.current;
 
+  const inPocket = state.inThePocket;
+  const heroValue = inPocket
+    ? state.managedCadence
+    : state.perceivedCadence > 0 ? state.perceivedCadence : '··';
+
   return (
     <View style={styles.container}>
       <View style={styles.statusRow}>
-        <View style={[styles.statusDot, state.isCalibrating ? styles.dotCalibrating : styles.dotLocked]} />
+        <View style={[styles.statusDot, (state.inThePocket || state.paceLocked) ? styles.dotLocked : styles.dotCalibrating]} />
         <Text style={styles.statusText}>
-          {state.isCalibrating ? 'Finding your pace' : state.paceLocked ? 'Pace locked' : 'Tracking'}
+          {state.isCalibrating ? 'Finding your pace'
+            : state.paceLocked ? 'Pace locked'
+            : state.inThePocket ? 'In the pocket'
+            : 'Shifting'}
         </Text>
         <Pressable hitSlop={14} onPress={() => engine.setPaceLocked(!state.paceLocked)}>
           <SymbolView
@@ -89,14 +99,11 @@ export default function ActiveSession() {
 
       {state.notice && <Text style={styles.notice}>{state.notice}</Text>}
 
-      <Text style={styles.bpmLabel}>Your pace</Text>
-      <Text style={styles.bpmValue}>
-        {state.perceivedCadence > 0 ? state.perceivedCadence : '··'}
-      </Text>
-      <Text style={styles.bpmUnit}>steps / min</Text>
-
-      {state.managedCadence > 0 && (
-        <Text style={styles.managed}>Matching {state.managedCadence} spm</Text>
+      <CadenceRing value={heroValue} active={inPocket} />
+      {state.managedCadence > 0 && !inPocket && (
+        <View style={styles.chip}>
+          <Text style={styles.chipText}>Matching {state.managedCadence}</Text>
+        </View>
       )}
 
       {state.isCalibrating && (
@@ -159,17 +166,17 @@ export default function ActiveSession() {
         <Text style={styles.noMusicLabel}>Enable Apple Music for playback control</Text>
       )}
 
-      <Pressable style={styles.secondaryBtn} onPress={() => setPaceModal(true)}>
-        <Text style={styles.secondaryBtnText}>Set pace manually</Text>
-      </Pressable>
+      <View style={styles.pillRow}>
+        <Pressable style={styles.pill} onPress={() => setPaceModal(true)}>
+          <Text style={styles.secondaryBtnText}>Set pace</Text>
+        </Pressable>
 
-      <Pressable style={styles.secondaryBtn} onPress={() => engine.recalibrate()}>
-        <Text style={styles.secondaryBtnText}>↺  Recalibrate</Text>
-      </Pressable>
+        <Pressable style={styles.pill} onPress={() => engine.recalibrate()}>
+          <Text style={styles.secondaryBtnText}>↺  Recalibrate</Text>
+        </Pressable>
+      </View>
 
-      <Pressable style={styles.endBtn} onPress={handleEnd}>
-        <Text style={styles.endBtnText}>End session</Text>
-      </Pressable>
+      <HoldToEnd onEnd={handleEnd} />
 
       <ManualPaceModal
         visible={paceModal}
@@ -188,10 +195,10 @@ const styles = StyleSheet.create({
   dotCalibrating: { backgroundColor: colors.muted },
   statusText: { color: colors.muted, fontSize: 14 },
   notice: { color: colors.muted, fontSize: 13, textAlign: 'center', marginBottom: 16, paddingHorizontal: 16 },
-  bpmLabel: { color: colors.muted, fontSize: 16, marginBottom: 4 },
-  bpmValue: { color: colors.text, fontSize: 88, fontWeight: '800', lineHeight: 96 },
-  bpmUnit: { color: colors.disabled, fontSize: 14, marginBottom: 12 },
-  managed: { color: colors.accent, fontSize: 14, marginBottom: 36 },
+  chip: { backgroundColor: colors.accentSoft, borderRadius: 50, paddingHorizontal: 14, paddingVertical: 6, marginTop: 18 },
+  chipText: { color: colors.accent, fontSize: 13, fontWeight: '700' },
+  pillRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginTop: 28, marginBottom: 8 },
+  pill: { borderWidth: 1.5, borderColor: colors.border, borderRadius: 50, paddingVertical: 11, paddingHorizontal: 20 },
   calibrating: { alignItems: 'center', gap: 12, marginBottom: 32 },
   calibratingText: { color: colors.muted, fontSize: 15, textAlign: 'center', paddingHorizontal: 24 },
   loadingText: { color: colors.accent, fontSize: 15, textAlign: 'center' },
