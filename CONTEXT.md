@@ -32,6 +32,43 @@ tied to implementation. Keep entries behavioral.
 - **Tempo (BPM)** — a song's beats per minute. Matched to managed cadence,
   allowing half-time and double-time.
 
+## Onboarding terms
+
+- **Onboarding** — the first-run flow shown once before the app proper. Two
+  framing screens (the honest ~10%-less-perceived-effort payoff, then the
+  entrainment mechanism), then two permission primers (motion, then Apple Music),
+  then a handoff straight into the first session. Ends at the first match, not on
+  a cold home screen. Gated by `hasCompletedOnboarding()` / `markOnboardingComplete()`.
+
+- **Permission primer** — a why-first screen shown *before* a system permission
+  prompt, explaining the value so the native dialog converts better. Cadence has
+  two: **motion** (CMPedometer — "reads your steps to match music to your pace;
+  never tracks location") and **Apple Music** (MusicKit — playback). Motion is
+  asked first (core, non-optional); Apple Music second (has a "continue without"
+  fallback). A denied permission shows a recoverable explainer with a deep-link to
+  iOS Settings, never a dead end.
+
+- **First match** — the aha moment onboarding aims for: the first time the music
+  tempo visibly locks to the user's live cadence (first time "on the beat" / in
+  the pocket). The whole first run is a runway to it.
+
+- **Feature tour** — a short, in-session set of contextual coachmarks that teach
+  the core concepts the first time they become relevant, rather than up front.
+  First-run scope is four: on-the-beat (the aha), the "Matching N" shift, pace
+  lock, and hold-to-end. Each is skippable; the whole tour is re-triggerable from
+  Settings. Ends with a Settings handoff ("good defaults — all tunable in
+  Settings"). Mechanism borrowed from the hobby-randomizer spotlight (measured
+  cutout, action-gated advance); see ADR 0005.
+
+- **Coachmark** — one step of the feature tour: a dimmed overlay with a cutout
+  around a real, measured on-screen element plus a short instruction. Advances on
+  the relevant real action (or a tap-to-dismiss for informational ones).
+
+- **Reset app** — a Settings action that clears onboarding + feature-tour state so
+  both replay on next launch, and deep-links to iOS Settings for revoking Motion /
+  Apple Music access (an app cannot revoke its own OS permissions). For testing and
+  for users who want a clean slate.
+
 ## Matching terms
 
 - **Half/double-time match** — a song matches when its tempo, or 2×, or ½× its
@@ -55,6 +92,13 @@ tied to implementation. Keep entries behavioral.
   goes on its own as you run. Drives the active screen's "locked" visual feedback
   (the accent color and any on-beat pulse). You leave the pocket when you shift
   pace and re-enter it once managed catches up.
+  - **Internal vs user-facing wording:** "in the pocket" is the *domain* term
+    (used in code, engine state `inThePocket`, and these docs). It is a
+    musician's phrase and tested as ambiguous with first-time users (read as
+    "phone in pocket"). User-facing copy therefore avoids it: the active-screen
+    status reads **"On the beat"** (not "Locked in", which collides with the
+    "Pace locked" status), and onboarding/tour copy teaches the felt thing
+    ("your steps are landing right on the beat") rather than the jargon.
 
 - **Guard rails** — cadence readings below FLOOR (50 spm) or above CEILING
   (240 spm) are treated as sensor noise: ignored for matching, flagged to the user.
@@ -74,8 +118,10 @@ tied to implementation. Keep entries behavioral.
   receding while you shift pace. Communicates *match quality*, not session
   progress.
 
-- **Song-position bar** — a thin scrubber on the now-playing track card showing
-  playback position within the current song. This is the only literal progress
+- **Song-position bar** — a thin, **display-only** indicator on the now-playing
+  track card showing playback position within the current song. Not scrubbable:
+  the system Music player cannot be reliably seeked (see ADR 0004), so it reflects
+  position but does not accept drags. This is the only literal progress
   bar in the app. There is deliberately **no session-progress bar**: a session is
   open-ended (you run until End), so there is no goal to fill toward. Elapsed
   duration is shown in the end-of-session summary, not live on the active screen.
