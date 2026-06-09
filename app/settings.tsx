@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Switch, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, Pressable, Switch, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MatchSettings, DEFAULT_MATCH_SETTINGS } from '@/types';
 import { getMatchSettings, saveMatchSettings } from '@/storage/store';
-import { PressableScale } from '@/components/PressableScale';
 import { colors } from '@/theme/colors';
 
 const STRICTNESS: { label: string; tolerance: number }[] = [
@@ -34,9 +33,9 @@ export default function Settings() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Settings</Text>
-        <PressableScale hitSlop={12} onPress={() => router.back()}>
+        <Pressable hitSlop={12} onPress={() => router.back()}>
           <Text style={styles.done}>Done</Text>
-        </PressableScale>
+        </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -73,13 +72,13 @@ export default function Settings() {
           {STRICTNESS.map((s) => {
             const active = Math.abs(settings.tolerance - s.tolerance) < 0.001;
             return (
-              <PressableScale
+              <Pressable
                 key={s.label}
                 style={[styles.segmentBtn, active && styles.segmentBtnActive]}
                 onPress={() => update({ tolerance: s.tolerance })}
               >
                 <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{s.label}</Text>
-              </PressableScale>
+              </Pressable>
             );
           })}
         </View>
@@ -94,13 +93,13 @@ export default function Settings() {
           ] as const).map(([val, label]) => {
             const active = settings.sensitivity === val;
             return (
-              <PressableScale
+              <Pressable
                 key={val}
                 style={[styles.segmentBtn, active && styles.segmentBtnActive]}
                 onPress={() => update({ sensitivity: val })}
               >
                 <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{label}</Text>
-              </PressableScale>
+              </Pressable>
             );
           })}
         </View>
@@ -114,13 +113,13 @@ export default function Settings() {
           ] as const).map(([val, label]) => {
             const active = settings.songSwitching === val;
             return (
-              <PressableScale
+              <Pressable
                 key={val}
                 style={[styles.segmentBtn, active && styles.segmentBtnActive]}
                 onPress={() => update({ songSwitching: val })}
               >
                 <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{label}</Text>
-              </PressableScale>
+              </Pressable>
             );
           })}
         </View>
@@ -128,9 +127,9 @@ export default function Settings() {
           When your pace changes, swap at the next song or right away.
         </Text>
 
-        <PressableScale style={styles.reset} onPress={() => update(DEFAULT_MATCH_SETTINGS)}>
+        <Pressable style={styles.reset} onPress={() => update(DEFAULT_MATCH_SETTINGS)}>
           <Text style={styles.resetText}>Reset to defaults</Text>
-        </PressableScale>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );

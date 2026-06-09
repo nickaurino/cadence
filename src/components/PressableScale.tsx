@@ -7,25 +7,28 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+// IMPORTANT: the style goes on the Pressable itself (via an animated Pressable),
+// not a wrapper — otherwise flex/width layout collapses (segments shrink, full-
+// width CTAs become content-sized). Only `transform` is animated (native driver),
+// alongside static styles — never animate color/shadow here (driver mixing).
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 interface PressableScaleProps {
   children: ReactNode;
   onPress?: (e: GestureResponderEvent) => void;
   style?: StyleProp<ViewStyle>;
   hitSlop?: number;
   disabled?: boolean;
-  scaleTo?: number; // how far it shrinks on press (default 0.96)
+  scaleTo?: number; // how far it shrinks on press (default 0.98 — subtle)
 }
 
-// A Pressable that gently scales down while held. Transform-only animation on the
-// native driver — never animate color/shadow here, or it would mix drivers on one
-// view and crash (see CadenceRing). Static styles passed via `style` are fine.
 export function PressableScale({
   children,
   onPress,
   style,
   hitSlop,
   disabled,
-  scaleTo = 0.96,
+  scaleTo = 0.98,
 }: PressableScaleProps) {
   const scale = useRef(new Animated.Value(1)).current;
 
@@ -38,14 +41,15 @@ export function PressableScale({
     }).start();
 
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
       onPressIn={() => animate(scaleTo)}
       onPressOut={() => animate(1)}
       hitSlop={hitSlop}
       disabled={disabled}
+      style={[style, { transform: [{ scale }] }]}
     >
-      <Animated.View style={[style, { transform: [{ scale }] }]}>{children}</Animated.View>
-    </Pressable>
+      {children}
+    </AnimatedPressable>
   );
 }
