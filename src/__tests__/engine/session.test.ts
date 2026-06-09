@@ -286,6 +286,54 @@ test('getSummary reports session stats', async () => {
   expect(summary.durationSec).toBeGreaterThanOrEqual(0);
 });
 
+test('inThePocket is false while calibrating', async () => {
+  const engine = new SessionEngine();
+  await engine.start({ vibe: 'hype' as Vibe });
+
+  expect(engine.getState().isCalibrating).toBe(true);
+  expect(engine.getState().inThePocket).toBe(false);
+});
+
+test('inThePocket is true on first lock and a steady near-managed reading', async () => {
+  const engine = await startAndMove(); // managed 170, drift 0
+
+  expect(engine.getState().inThePocket).toBe(true);
+
+  mockHolder.cb!(175); // drift 5 < threshold 10
+  await flush();
+  expect(engine.getState().inThePocket).toBe(true);
+});
+
+test('inThePocket is false when a single reading drifts past the threshold', async () => {
+  const engine = await startAndMove(); // managed 170
+
+  mockHolder.cb!(190); // drift 20 >= threshold 10, managed hasn't moved yet
+  await flush();
+
+  expect(engine.getState().managedCadence).toBe(170);
+  expect(engine.getState().inThePocket).toBe(false);
+});
+
+test('setManualPace puts the runner in the pocket', async () => {
+  const engine = new SessionEngine();
+  await engine.start({ vibe: 'hype' as Vibe });
+
+  await engine.setManualPace(180);
+
+  expect(engine.getState().paceLocked).toBe(true);
+  expect(engine.getState().inThePocket).toBe(true);
+});
+
+test('setPaceLocked toggles inThePocket', async () => {
+  const engine = await startAndMove();
+
+  engine.setPaceLocked(true);
+  expect(engine.getState().inThePocket).toBe(true);
+
+  engine.setPaceLocked(false);
+  expect(engine.getState().inThePocket).toBe(false);
+});
+
 test('togglePlayPause pauses then resumes', async () => {
   const engine = await startAndMove();
 

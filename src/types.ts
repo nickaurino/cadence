@@ -63,6 +63,7 @@ export interface SessionState {
   isCalibrating: boolean; // waiting for the first movement / pace
   isLoadingTracks: boolean; // pace known, fetching matched songs
   paceLocked: boolean; // user manually froze the managed cadence (treadmill/manual)
+  inThePocket: boolean; // perceived sits within the match band of managed (or locked); false while calibrating
   isPlaying: boolean;
   notice: string | null; // transient message (e.g. pace change, out of range)
   currentTrack: MusicTrack | null;

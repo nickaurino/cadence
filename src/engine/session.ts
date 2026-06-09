@@ -132,6 +132,7 @@ export class SessionEngine {
       isCalibrating: true,
       isLoadingTracks: false,
       paceLocked: false,
+      inThePocket: false,
       isPlaying: false,
       notice: null,
       currentTrack: null,
@@ -184,6 +185,7 @@ export class SessionEngine {
       isCalibrating: false,
       isLoadingTracks: false,
       paceLocked: snapshot.paceLocked,
+      inThePocket: false,
       isPlaying: true,
       notice: null,
       currentTrack: null,
@@ -205,6 +207,13 @@ export class SessionEngine {
     });
   }
 
+  private _computePocket(spm: number): boolean {
+    if (!this._state || this._state.isCalibrating) return false;
+    if (this._paceLocked) return true;
+    const { threshold } = SENSITIVITY_PRESETS[this._settings.sensitivity];
+    return Math.abs(spm - this._state.managedCadence) < threshold;
+  }
+
   private async _onPerceivedCadence(spm: number): Promise<void> {
     if (!this._state) return;
 
@@ -213,6 +222,7 @@ export class SessionEngine {
     this._smoothedPerceived =
       this._smoothedPerceived === null ? spm : this._smoothedPerceived * 0.6 + spm * 0.4;
     this._state.perceivedCadence = Math.round(this._smoothedPerceived);
+    this._state.inThePocket = this._computePocket(spm);
 
     // Above the ceiling = sensor noise: show it, flag it, don't manage.
     if (spm > CADENCE_CEILING) {
@@ -241,6 +251,7 @@ export class SessionEngine {
     if (this._state.isCalibrating) {
       this._state.isCalibrating = false;
       this._state.managedCadence = spm;
+      this._state.inThePocket = true;
       this._managedSince = null;
       await this._commitManaged(spm, true);
       return;
@@ -383,6 +394,7 @@ export class SessionEngine {
     this._state.isCalibrating = false;
     this._state.notice = null;
     this._state.managedCadence = spm;
+    this._state.inThePocket = true;
     this._state.perceivedCadence = spm;
     this._smoothedPerceived = spm;
     await this._commitManaged(spm, true);
@@ -392,6 +404,7 @@ export class SessionEngine {
     if (!this._state) return;
     this._paceLocked = locked;
     this._state.paceLocked = locked;
+    this._state.inThePocket = locked ? true : false;
     this._managedSince = null;
     this._emit();
   }
@@ -467,6 +480,7 @@ export class SessionEngine {
     this._smoothedPerceived = null;
     this._state.paceLocked = false;
     this._state.isCalibrating = true;
+    this._state.inThePocket = false;
     this._state.notice = null;
     this._emit();
     this._detector.recalibrate();
