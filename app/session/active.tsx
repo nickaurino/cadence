@@ -9,6 +9,7 @@ import { loadPersisted, shouldResume, clearPersisted } from '@/storage/session-s
 import { ManualPaceModal } from '@/components/ManualPaceModal';
 import { CadenceRing } from '@/components/CadenceRing';
 import { HoldToEnd } from '@/components/HoldToEnd';
+import { PressableScale } from '@/components/PressableScale';
 import { SessionState, Vibe } from '@/types';
 import { colors } from '@/theme/colors';
 
@@ -117,14 +118,14 @@ export default function ActiveSession() {
             : state.inThePocket ? 'In the pocket'
             : 'Shifting'}
         </Text>
-        <Pressable hitSlop={14} onPress={() => engine.setPaceLocked(!state.paceLocked)}>
+        <PressableScale hitSlop={14} onPress={() => engine.setPaceLocked(!state.paceLocked)}>
           <SymbolView
             name={state.paceLocked ? 'lock.fill' : 'lock.open.fill'}
             size={18}
             type="monochrome"
             tintColor={state.paceLocked ? colors.accent : colors.faint}
           />
-        </Pressable>
+        </PressableScale>
       </View>
 
       <CadenceRing value={heroValue} active={inPocket} closeness={state.pocketCloseness} />
@@ -150,20 +151,20 @@ export default function ActiveSession() {
                 </Text>
               </View>
               <View style={styles.inlineControls}>
-                <Pressable hitSlop={12} onPress={() => run(engine.skipPrevious())}>
+                <PressableScale hitSlop={12} onPress={() => run(engine.skipPrevious())}>
                   <SymbolView name="backward.end.fill" size={20} type="monochrome" tintColor={colors.text} />
-                </Pressable>
-                <Pressable hitSlop={12} onPress={() => run(engine.togglePlayPause())}>
+                </PressableScale>
+                <PressableScale hitSlop={12} onPress={() => run(engine.togglePlayPause())}>
                   <SymbolView
                     name={state.isPlaying ? 'pause.fill' : 'play.fill'}
                     size={22}
                     type="monochrome"
                     tintColor={colors.text}
                   />
-                </Pressable>
-                <Pressable hitSlop={12} onPress={() => run(engine.skipNext())}>
+                </PressableScale>
+                <PressableScale hitSlop={12} onPress={() => run(engine.skipNext())}>
                   <SymbolView name="forward.end.fill" size={20} type="monochrome" tintColor={colors.text} />
-                </Pressable>
+                </PressableScale>
               </View>
             </View>
           ) : (
@@ -178,12 +179,12 @@ export default function ActiveSession() {
         )}
 
         <View style={styles.pillRow}>
-          <Pressable style={styles.pill} onPress={() => setPaceModal(true)}>
+          <PressableScale style={styles.pill} onPress={() => setPaceModal(true)}>
             <Text style={styles.secondaryBtnText}>Set pace</Text>
-          </Pressable>
-          <Pressable style={styles.pill} onPress={() => engine.recalibrate()}>
+          </PressableScale>
+          <PressableScale style={styles.pill} onPress={() => engine.recalibrate()}>
             <Text style={styles.secondaryBtnText}>↺  Recalibrate</Text>
-          </Pressable>
+          </PressableScale>
         </View>
 
       <View style={styles.holdWrap}>
