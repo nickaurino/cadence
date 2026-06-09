@@ -5,9 +5,11 @@ import { Pedometer } from 'expo-sensors';
 import { colors } from '@/theme/colors';
 import { PRIMERS } from '@/onboarding/copy';
 
-// Motion primer. Tapping the CTA explicitly calls requestPermissionsAsync, which
-// triggers the iOS Motion & Fitness prompt for a fresh (undetermined) user. We
-// proceed regardless of the result: if already decided, iOS won't re-prompt
+// Motion primer. Core Motion (CMPedometer) has NO explicit authorization API —
+// requestPermissionsAsync does not surface the iOS dialog. The Motion & Fitness
+// prompt fires only on an actual data query, so we issue a real getStepCountAsync
+// here to trigger it now (rather than later at session start). We proceed
+// regardless of the result: if already decided, iOS won't re-prompt
 // (canAskAgain:false) and the in-app no-motion state handles a denial later.
 export default function MotionPrimer() {
   const [asking, setAsking] = useState(false);
@@ -15,9 +17,11 @@ export default function MotionPrimer() {
   async function handleAllow() {
     setAsking(true);
     try {
-      await Pedometer.requestPermissionsAsync();
+      const end = new Date();
+      const start = new Date(end.getTime() - 1000);
+      await Pedometer.getStepCountAsync(start, end); // triggers the OS prompt
     } catch {
-      // ignore — proceed either way; the session re-checks readability.
+      // denied or no data — proceed; the in-app no-motion state handles denial.
     } finally {
       router.push('/onboarding/connect?from=onboarding');
     }
