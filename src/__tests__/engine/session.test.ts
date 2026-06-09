@@ -334,6 +334,54 @@ test('setPaceLocked toggles inThePocket', async () => {
   expect(engine.getState().inThePocket).toBe(false);
 });
 
+test('pocketCloseness is 1 for a steady reading at managed', async () => {
+  const engine = await startAndMove(); // managed 170, drift 0
+
+  expect(engine.getState().pocketCloseness).toBe(1);
+});
+
+test('pocketCloseness falls off linearly with drift', async () => {
+  const engine = await startAndMove(); // managed 170, threshold 10
+
+  // The displayed perceived value is EMA-smoothed, so settle it at 175
+  // (drift 5 = half of threshold 10) by repeating the reading.
+  for (let i = 0; i < 20; i++) {
+    mockHolder.cb!(175);
+    await flush();
+  }
+
+  expect(engine.getState().perceivedCadence).toBe(175);
+  expect(engine.getState().pocketCloseness).toBeCloseTo(0.5);
+});
+
+test('pocketCloseness is 0 at or past the threshold', async () => {
+  const engine = await startAndMove(); // managed 170, threshold 10
+
+  // Settle the displayed perceived value at 180 (drift 10 >= threshold 10).
+  for (let i = 0; i < 20; i++) {
+    mockHolder.cb!(180);
+    await flush();
+  }
+
+  expect(engine.getState().perceivedCadence).toBe(180);
+  expect(engine.getState().pocketCloseness).toBe(0);
+});
+
+test('pocketCloseness is 0 while calibrating', async () => {
+  const engine = new SessionEngine();
+  await engine.start({ vibe: 'hype' as Vibe });
+
+  expect(engine.getState().isCalibrating).toBe(true);
+  expect(engine.getState().pocketCloseness).toBe(0);
+});
+
+test('pocketCloseness is 1 after setPaceLocked(true)', async () => {
+  const engine = await startAndMove();
+
+  engine.setPaceLocked(true);
+  expect(engine.getState().pocketCloseness).toBe(1);
+});
+
 test('togglePlayPause pauses then resumes', async () => {
   const engine = await startAndMove();
 

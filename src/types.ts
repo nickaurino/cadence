@@ -64,6 +64,7 @@ export interface SessionState {
   isLoadingTracks: boolean; // pace known, fetching matched songs
   paceLocked: boolean; // user manually froze the managed cadence (treadmill/manual)
   inThePocket: boolean; // perceived sits within the match band of managed (or locked); false while calibrating
+  pocketCloseness: number; // 0..1, how close perceived sits to managed (1 = locked, 0 = at/over the drift band). Drives the ring warmth.
   isPlaying: boolean;
   notice: string | null; // transient message (e.g. pace change, out of range)
   currentTrack: MusicTrack | null;
