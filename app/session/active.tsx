@@ -98,6 +98,12 @@ export default function ActiveSession() {
     return null; // in the pocket: calm, no message
   }
 
+  // Playback/native actions can reject (e.g. a MusicKit hiccup, skip at a queue
+  // edge); swallow so a transient failure never surfaces as an uncaught-promise
+  // crash banner.
+  const run = (action: Promise<unknown>) =>
+    action.catch((e) => console.warn('[active] action failed:', e));
+
   return (
     <View style={styles.container}>
       <View style={styles.statusRow}>
@@ -143,10 +149,10 @@ export default function ActiveSession() {
                 </Text>
               </View>
               <View style={styles.inlineControls}>
-                <Pressable hitSlop={12} onPress={() => engine.skipPrevious()}>
+                <Pressable hitSlop={12} onPress={() => run(engine.skipPrevious())}>
                   <SymbolView name="backward.end.fill" size={20} type="monochrome" tintColor={colors.text} />
                 </Pressable>
-                <Pressable hitSlop={12} onPress={() => engine.togglePlayPause()}>
+                <Pressable hitSlop={12} onPress={() => run(engine.togglePlayPause())}>
                   <SymbolView
                     name={state.isPlaying ? 'pause.fill' : 'play.fill'}
                     size={22}
@@ -154,7 +160,7 @@ export default function ActiveSession() {
                     tintColor={colors.text}
                   />
                 </Pressable>
-                <Pressable hitSlop={12} onPress={() => engine.skipNext()}>
+                <Pressable hitSlop={12} onPress={() => run(engine.skipNext())}>
                   <SymbolView name="forward.end.fill" size={20} type="monochrome" tintColor={colors.text} />
                 </Pressable>
               </View>
@@ -185,7 +191,7 @@ export default function ActiveSession() {
       <ManualPaceModal
         visible={paceModal}
         onClose={() => setPaceModal(false)}
-        onConfirm={(spm) => engine.setManualPace(spm)}
+        onConfirm={(spm) => run(engine.setManualPace(spm))}
       />
     </View>
   );
