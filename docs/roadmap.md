@@ -1,50 +1,44 @@
-# Cadence — Review & Roadmap (2026-06-08)
+# Cadence — Review & Roadmap (2026-06-09)
 
-State: core loop works end to end on device — pedometer → perceived/managed
-cadence → BPM-matched Apple Music with half/double-time, settings, guard rails,
-auto-replenish, manual pace, playback controls. 56 unit tests green, tsc clean.
+State: full app working on device — pedometer → perceived/managed cadence →
+groove-aware BPM-matched Apple Music, background-resilient sessions, and a complete
+Onyx + Marigold visual revamp. 99 unit tests green, tsc clean. All on `main` (local,
+unpushed).
 
-## Cleanup done this pass
-- Removed dead Spotify token helpers, `MODE_BPM`, `SessionMode`, `CadenceReading`.
-- Replaced dead Spotify store tests with match-settings coverage.
+## Done (recent)
 
-## Open issues (prioritized)
+- Groove-aware ranking v2 (pulse clarity + tempo stability).
+- Background-resilient sessions (persist + auto-resume + recovery).
+- Visual system locked: Onyx `#0c0c0d` + Marigold `#EFA836` (ADR 0003); cream hint.
+- Active screen redesign: `CadenceRing`, in-the-pocket hero (ADR 0002), `HoldToEnd`
+  (gold full-length fill + haptics), reserved message slot, tight centered layout.
+- Home / vibe-selector / end / settings redesigned. Shared components
+  (`PressableScale`, `SettingsButton`).
+- Default song switching → immediate; manual-pace wheel fixed.
 
-1. **Music keeps playing after "End session."** `player.disconnect()` is a no-op and
-   `engine.stop()` never pauses the system player. Likely surprising. Fix: pause on stop.
-   _(low effort)_
-2. **Slow first load.** We analyze ~75 preview clips before the first song plays. The
-   biggest UX drag. Options: cap candidate count, limit concurrency, or short-circuit
-   once N matches are found. _(medium)_
-3. **`end.tsx` ignores the track ids it's handed** — no session summary. Either build one
-   or drop the param. _(feature)_
-4. **Onboarding overstates the science:** "improves endurance by 15%." Our own research
-   supports ~10% lower perceived effort and ~1–3% endurance. Soften for credibility.
-   _(copy / brand — Zernell)_
-5. **Replenish depth:** high catalog offsets return nothing → queue stops growing. Rare.
-6. **Native unverified on device:** `analyzeBpm` accuracy and the now-playing observer
-   only validated by use. Watch for missed auto-advances / bad BPMs.
-7. **Boundary pending + replenish** can queue old-pace songs onto the player while a swap
-   is pending. Minor.
+## Next big thing: onboarding + feature tour + credits
 
-## Feature opportunities (next, by value)
+PREP-heavy. See `docs/design-research/05-onboarding-tour-credits-prep.md`:
+psychology research → Dabble teardown → growth-docs session → spec → plan → build.
 
-- **A. Session summary** (end screen): duration, average cadence, songs played, estimated
-  distance. Uses data we already pass. High value, natural close to the loop.
-- **B. Recommendation performance** (issue 2): make the first song arrive fast. Highest
-  friction in real use.
-- **C. Groove-aware recommendations (v2):** rank within a BPM band by pulse clarity /
-  tempo stability / energy — all computable from the preview pipeline we already run
-  (see docs/ideas/smart-recommendations-music-science.md). The real differentiator.
-- **D. Crossfade / smoother song switch** (softens the immediate-swap abruptness).
-- **E. Hero-number decision:** keep perceived (smoothed) as the big number vs promote
-  managed. Pending a steady-run feel test.
-- **F. Stop-vs-keep-playing on session end** (issue 1, also a product choice).
-- **G. Polish:** broaden search on "no songs matched"; auth-lost error states; onboarding
-  copy honesty (issue 4).
+## Open / parked (prioritized)
 
-## Process
-- **Commit the work.** A large amount of this session's work (Cadence app + portfolio) is
-  uncommitted. Strongly recommend committing/branching before building more — the tree is
-  big and at risk.
-- Keep the CONTEXT.md + docs/adr pattern for non-trivial decisions.
+1. **In-the-pocket sensitivity** — tune after a real **treadmill test** (it's hard
+   to lock onto the beat; don't guess at home). Touches `SENSITIVITY_PRESETS` and the
+   `_computeCloseness` band.
+2. **Song progress bar** — needs native playback-position support (expose
+   position+duration from the player, poll it) + a rebuild. Currently absent.
+3. **Haptic rebuild** — `expo-haptics` installed; one native rebuild lights up the
+   hold-to-end buzz.
+4. **Layout mount-glitch** — fixed twice (initialWindowMetrics; then top safe-area
+   edge dropped on centered screens). If it recurs, diagnose the navigation
+   transition properly — no more patch-guesses.
+5. **Push to GitHub** — `main` is ~40 commits ahead of `origin` (public repo).
+6. **Settings toggles** — if the native `Switch` animation still reads as "too much,"
+   build a calmer custom toggle.
+
+## Process notes
+- Animations: one driver per view (see CadenceRing/PressableScale).
+- Device-only failures (native rejections, animation drivers) pass tsc+jest — audit
+  by hand; reload on device is the real test.
+- Keep CONTEXT.md + docs/adr current for non-trivial decisions.
