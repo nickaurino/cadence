@@ -133,6 +133,14 @@ export default function Settings() {
         >
           <Text style={styles.resetText}>Reset to defaults</Text>
         </Pressable>
+
+        <Text style={styles.sectionLabel}>ABOUT</Text>
+        <View style={styles.group}>
+          <Pressable style={styles.aboutRow} onPress={() => router.push('/credits')}>
+            <Text style={styles.rowTitle}>Credits</Text>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -177,6 +185,8 @@ const styles = StyleSheet.create({
   content: { padding: 24, paddingTop: 8 },
   sectionLabel: { color: colors.faint, fontSize: 12, fontWeight: '600', letterSpacing: 1, marginBottom: 10, marginTop: 24 },
   group: { backgroundColor: colors.surface, borderRadius: 14, overflow: 'hidden' },
+  aboutRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 16 },
+  chevron: { color: colors.faint, fontSize: 22, fontWeight: '400' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, gap: 16 },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
   rowText: { flex: 1 },
