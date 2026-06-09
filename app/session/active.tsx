@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SessionEngine } from '@/engine/session';
+import { sessionStatusLabel } from '@/engine/status';
 import { isAvailable } from '@/music/auth';
 import { loadPersisted, shouldResume, clearPersisted } from '@/storage/session-store';
 import { ManualPaceModal } from '@/components/ManualPaceModal';
@@ -149,10 +150,7 @@ export default function ActiveSession() {
       <View style={styles.statusRow}>
         <View style={[styles.statusDot, (state.inThePocket || state.paceLocked) ? styles.dotLocked : styles.dotCalibrating]} />
         <Text style={styles.statusText}>
-          {state.isCalibrating ? 'Finding your pace'
-            : state.paceLocked ? 'Pace locked'
-            : state.inThePocket ? 'In the pocket'
-            : 'Shifting'}
+          {sessionStatusLabel(state)}
         </Text>
         <PressableScale hitSlop={14} onPress={() => engine.setPaceLocked(!state.paceLocked)}>
           <SymbolView
