@@ -66,6 +66,16 @@ export class SessionEngine {
     this._onStateChange = cb;
   }
 
+  // Force a snapshot write immediately (e.g. when the app backgrounds).
+  persistNow(): void {
+    this._persist(true);
+  }
+
+  // Emit an immediate cadence estimate from pedometer history (resume/foreground).
+  async seedCadenceFromHistory(): Promise<void> {
+    await this._detector.seedFromHistory();
+  }
+
   private _emit(): void {
     if (this._state && this._onStateChange) this._onStateChange({ ...this._state });
     this._persist();
