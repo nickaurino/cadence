@@ -29,6 +29,11 @@ export async function hasCompletedOnboarding(): Promise<boolean> {
   return value === 'true';
 }
 
+// Reset onboarding so the first-run flow replays on next launch (Reset app).
+export async function resetOnboarding(): Promise<void> {
+  await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY);
+}
+
 // Which feature-tour coachmarks have been seen (persisted individually so the
 // tour survives session resume and fires across sessions). Unknown keys default
 // to unseen, so adding a coachmark later doesn't read as already-seen.

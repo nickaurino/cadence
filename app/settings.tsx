@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Pressable, Switch, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, Pressable, Switch, StyleSheet, ScrollView, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MatchSettings, DEFAULT_MATCH_SETTINGS } from '@/types';
-import { getMatchSettings, saveMatchSettings } from '@/storage/store';
+import { getMatchSettings, saveMatchSettings, resetOnboarding, clearCoachmarksSeen } from '@/storage/store';
 import { colors } from '@/theme/colors';
 
 const STRICTNESS: { label: string; tolerance: number }[] = [
@@ -28,6 +28,28 @@ export default function Settings() {
   }
 
   const enabledModes = [settings.exact, settings.halfTime, settings.doubleTime].filter(Boolean).length;
+
+  function confirmResetApp() {
+    Alert.alert(
+      'Reset Cadence?',
+      "You'll see onboarding and the tour again on next launch. To remove Motion or Apple Music access, open iOS Settings (an app can't revoke its own permissions).",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            await resetOnboarding();
+            await clearCoachmarksSeen();
+            Alert.alert('Cadence reset', 'Reopen the app to start fresh.', [
+              { text: 'Open iOS Settings', onPress: () => Linking.openSettings().catch(() => {}) },
+              { text: 'Done', style: 'cancel' },
+            ]);
+          },
+        },
+      ]
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -141,6 +163,10 @@ export default function Settings() {
             <Text style={styles.chevron}>›</Text>
           </Pressable>
         </View>
+
+        <Pressable onPress={confirmResetApp} style={({ pressed }) => [styles.reset, pressed && styles.resetPressed]}>
+          <Text style={styles.resetText}>Reset app</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );

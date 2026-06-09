@@ -7,6 +7,7 @@ import {
   getCoachmarksSeen,
   saveCoachmarksSeen,
   clearCoachmarksSeen,
+  resetOnboarding,
 } from '@/storage/store';
 import { DEFAULT_MATCH_SETTINGS } from '@/types';
 import { allUnseen, withSeen } from '@/tour/tourState';
@@ -63,4 +64,11 @@ test('clearCoachmarksSeen resets to all unseen', async () => {
   await saveCoachmarksSeen(withSeen(allUnseen(), 'paceLock'));
   await clearCoachmarksSeen();
   expect(await getCoachmarksSeen()).toEqual(allUnseen());
+});
+
+test('resetOnboarding makes onboarding incomplete again', async () => {
+  await markOnboardingComplete();
+  expect(await hasCompletedOnboarding()).toBe(true);
+  await resetOnboarding();
+  expect(await hasCompletedOnboarding()).toBe(false);
 });
