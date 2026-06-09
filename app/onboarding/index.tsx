@@ -1,5 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { colors } from '@/theme/colors';
 
 export default function OnboardingOne() {
   return (
@@ -20,9 +21,9 @@ export default function OnboardingOne() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a', justifyContent: 'center', padding: 32 },
-  title: { fontSize: 32, fontWeight: '700', color: '#fff', marginBottom: 24 },
-  body: { fontSize: 17, color: '#aaa', lineHeight: 26, marginBottom: 48 },
-  button: { backgroundColor: '#1DB954', borderRadius: 50, paddingVertical: 16, alignItems: 'center' },
-  buttonText: { color: '#000', fontSize: 17, fontWeight: '600' },
+  container: { flex: 1, backgroundColor: colors.background, justifyContent: 'center', padding: 32 },
+  title: { fontSize: 32, fontWeight: '700', color: colors.text, marginBottom: 24 },
+  body: { fontSize: 17, color: colors.muted, lineHeight: 26, marginBottom: 48 },
+  button: { backgroundColor: colors.accent, borderRadius: 50, paddingVertical: 16, alignItems: 'center' },
+  buttonText: { color: colors.onAccent, fontSize: 17, fontWeight: '600' },
 });

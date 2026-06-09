@@ -5,6 +5,7 @@ import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-nati
 import { router } from 'expo-router';
 import { authorize } from '@/music/auth';
 import { markOnboardingComplete } from '@/storage/store';
+import { colors } from '@/theme/colors';
 
 export default function ConnectAppleMusic() {
   const [loading, setLoading] = useState(false);
@@ -49,7 +50,7 @@ export default function ConnectAppleMusic() {
 
       <Pressable style={styles.button} onPress={handleConnect} disabled={loading}>
         {loading
-          ? <ActivityIndicator color="#000" />
+          ? <ActivityIndicator color={colors.onAccent} />
           : <Text style={styles.buttonText}>Connect Apple Music</Text>}
       </Pressable>
     </View>
@@ -57,12 +58,12 @@ export default function ConnectAppleMusic() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a', justifyContent: 'center', padding: 32 },
-  title: { fontSize: 32, fontWeight: '700', color: '#fff', marginBottom: 24 },
-  body: { fontSize: 17, color: '#aaa', lineHeight: 26, marginBottom: 48 },
-  deniedBox: { backgroundColor: '#1a1a1a', borderRadius: 12, padding: 16, marginBottom: 24 },
-  deniedText: { color: '#aaa', fontSize: 15, lineHeight: 22, marginBottom: 12 },
-  skipText: { color: '#1DB954', fontSize: 15, fontWeight: '600' },
-  button: { backgroundColor: '#fff', borderRadius: 50, paddingVertical: 16, alignItems: 'center' },
-  buttonText: { color: '#000', fontSize: 17, fontWeight: '600' },
+  container: { flex: 1, backgroundColor: colors.background, justifyContent: 'center', padding: 32 },
+  title: { fontSize: 32, fontWeight: '700', color: colors.text, marginBottom: 24 },
+  body: { fontSize: 17, color: colors.muted, lineHeight: 26, marginBottom: 48 },
+  deniedBox: { backgroundColor: colors.surface, borderRadius: 12, padding: 16, marginBottom: 24 },
+  deniedText: { color: colors.muted, fontSize: 15, lineHeight: 22, marginBottom: 12 },
+  skipText: { color: colors.accent, fontSize: 15, fontWeight: '600' },
+  button: { backgroundColor: colors.text, borderRadius: 50, paddingVertical: 16, alignItems: 'center' },
+  buttonText: { color: colors.onAccent, fontSize: 17, fontWeight: '600' },
 });

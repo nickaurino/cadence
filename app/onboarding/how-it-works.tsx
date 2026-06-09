@@ -1,5 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { colors } from '@/theme/colors';
 
 export default function OnboardingTwo() {
   return (
@@ -26,12 +27,12 @@ export default function OnboardingTwo() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a', justifyContent: 'center', padding: 32 },
-  title: { fontSize: 32, fontWeight: '700', color: '#fff', marginBottom: 32 },
+  container: { flex: 1, backgroundColor: colors.background, justifyContent: 'center', padding: 32 },
+  title: { fontSize: 32, fontWeight: '700', color: colors.text, marginBottom: 32 },
   step: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 28, gap: 16 },
-  stepNum: { fontSize: 24, fontWeight: '700', color: '#1DB954', width: 32 },
-  stepHeading: { fontSize: 17, fontWeight: '600', color: '#fff', marginBottom: 4 },
-  stepSub: { fontSize: 15, color: '#aaa', lineHeight: 22 },
-  button: { backgroundColor: '#1DB954', borderRadius: 50, paddingVertical: 16, alignItems: 'center', marginTop: 16 },
-  buttonText: { color: '#000', fontSize: 17, fontWeight: '600' },
+  stepNum: { fontSize: 24, fontWeight: '700', color: colors.accent, width: 32 },
+  stepHeading: { fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 4 },
+  stepSub: { fontSize: 15, color: colors.muted, lineHeight: 22 },
+  button: { backgroundColor: colors.accent, borderRadius: 50, paddingVertical: 16, alignItems: 'center', marginTop: 16 },
+  buttonText: { color: colors.onAccent, fontSize: 17, fontWeight: '600' },
 });
