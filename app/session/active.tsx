@@ -89,7 +89,7 @@ export default function ActiveSession() {
         </View>
       );
     if (s.isCalibrating)
-      return <Text style={styles.msgMuted}>Start moving — we&apos;ll match music to your rhythm.</Text>;
+      return <Text style={styles.msgMuted} numberOfLines={1}>Start moving to match the beat.</Text>;
     if (!inPocket && s.managedCadence > 0)
       return (
         <View style={styles.chip}>
@@ -190,7 +190,7 @@ export default function ActiveSession() {
         <HoldToEnd onEnd={handleEnd} duration={1000} />
       </View>
 
-      <View style={styles.spacer} />
+      <View style={styles.spacerBottom} />
 
       <ManualPaceModal
         visible={paceModal}
@@ -204,20 +204,21 @@ export default function ActiveSession() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 28, alignItems: 'center' },
   spacer: { flex: 1 },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', marginBottom: 16 },
+  spacerBottom: { flex: 1.3 }, // slightly more space below = group sits a hair above center
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', marginBottom: 12 },
   statusDot: { width: 10, height: 10, borderRadius: 5 },
   dotLocked: { backgroundColor: colors.accent },
   dotCalibrating: { backgroundColor: colors.muted },
   statusText: { color: colors.muted, fontSize: 14 },
-  messageSlot: { height: 48, marginTop: 16, alignItems: 'center', justifyContent: 'center' },
+  messageSlot: { height: 32, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
   msgRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   msgMuted: { color: colors.muted, fontSize: 14, textAlign: 'center', paddingHorizontal: 16 },
   msgAccent: { color: colors.accent, fontSize: 14, textAlign: 'center', paddingHorizontal: 16 },
-  songArea: { minHeight: 80, width: '100%', justifyContent: 'center', marginTop: 26 },
-  chip: { backgroundColor: colors.accentSoft, borderRadius: 50, paddingHorizontal: 14, paddingVertical: 6 },
+  songArea: { minHeight: 72, width: '100%', justifyContent: 'center', marginTop: 10 },
+  chip: { backgroundColor: colors.accentSoft, borderRadius: 50, paddingHorizontal: 14, paddingVertical: 5 },
   chipText: { color: colors.accent, fontSize: 13, fontWeight: '700' },
-  pillRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginTop: 22 },
-  holdWrap: { width: '100%', marginTop: 14 },
+  pillRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginTop: 26 },
+  holdWrap: { width: '100%', marginTop: 18 },
   pill: { borderWidth: 1.5, borderColor: colors.border, borderRadius: 50, paddingVertical: 11, paddingHorizontal: 20 },
   trackCard: { flexDirection: 'row', alignItems: 'center', gap: 14, width: '100%', marginBottom: 0 },
   albumArt: { width: 56, height: 56, borderRadius: 8 },
