@@ -1,4 +1,14 @@
-import { perceivedCadence } from '@/sensors/cadence';
+import { perceivedCadence, CadenceDetector } from '@/sensors/cadence';
+import { CADENCE_WINDOW_MS } from '@/types';
+import { Pedometer } from 'expo-sensors';
+
+jest.mock('expo-sensors', () => ({
+  Pedometer: {
+    isAvailableAsync: jest.fn(),
+    watchStepCount: jest.fn(() => ({ remove: jest.fn() })),
+    getStepCountAsync: jest.fn(),
+  },
+}));
 
 describe('perceivedCadence', () => {
   it('computes steps in the window over elapsed time', () => {
@@ -19,5 +29,52 @@ describe('perceivedCadence', () => {
   it('decays toward 0 when steps stop arriving', () => {
     // newest sample is 12s old, no new steps -> rate collapses to 0
     expect(perceivedCadence([{ t: 0, steps: 0 }, { t: 4000, steps: 12 }], 16000)).toBe(0);
+  });
+});
+
+describe('CadenceDetector.seedFromHistory', () => {
+  const getStepCountAsync = Pedometer.getStepCountAsync as jest.Mock;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (Pedometer.watchStepCount as jest.Mock).mockReturnValue({ remove: jest.fn() });
+  });
+
+  it('emits one immediate cadence estimate from recent history', async () => {
+    const steps = 24;
+    const expectedSpm = Math.round((steps / (CADENCE_WINDOW_MS / 1000)) * 60);
+    getStepCountAsync.mockResolvedValue({ steps });
+
+    const detector = new CadenceDetector();
+    const cb = jest.fn();
+    detector.start(cb);
+    await detector.seedFromHistory();
+
+    expect(cb).toHaveBeenCalledWith(expectedSpm);
+    detector.stop();
+  });
+
+  it('emits nothing when no steps in history (spm 0)', async () => {
+    getStepCountAsync.mockResolvedValue({ steps: 0 });
+
+    const detector = new CadenceDetector();
+    const cb = jest.fn();
+    detector.start(cb);
+    await detector.seedFromHistory();
+
+    expect(cb).not.toHaveBeenCalled();
+    detector.stop();
+  });
+
+  it('swallows errors when history is unavailable', async () => {
+    getStepCountAsync.mockRejectedValue(new Error('no permission'));
+
+    const detector = new CadenceDetector();
+    const cb = jest.fn();
+    detector.start(cb);
+
+    await expect(detector.seedFromHistory()).resolves.toBeUndefined();
+    expect(cb).not.toHaveBeenCalled();
+    detector.stop();
   });
 });
