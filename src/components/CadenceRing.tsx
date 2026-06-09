@@ -17,11 +17,12 @@ const WARM_DURATION = 320;
 export function CadenceRing({ value, unit = 'steps / min', active, closeness }: CadenceRingProps) {
   const targetCloseness = closeness ?? (active ? 1 : 0);
 
-  // Drives the gentle in-the-pocket pulse (scale). Native-driver only.
-  const pulse = useRef(new Animated.Value(0)).current;
-  // Drives the cold->gold warmth (colors + glow). Color/shadow interpolation
-  // requires useNativeDriver: false, so this stays a separate value.
-  const warm = useRef(new Animated.Value(targetCloseness)).current;
+  // Both animations drive the SAME ring view, so they must share one driver.
+  // Color/shadow can't use the native driver, so EVERYTHING here is
+  // useNativeDriver: false. Do NOT switch the pulse to the native driver — mixing
+  // native + JS drivers on one view crashes ("animated node moved to native").
+  const pulse = useRef(new Animated.Value(0)).current; // gentle in-the-pocket scale
+  const warm = useRef(new Animated.Value(targetCloseness)).current; // cold->gold warmth
 
   useEffect(() => {
     if (!active) {
@@ -29,7 +30,7 @@ export function CadenceRing({ value, unit = 'steps / min', active, closeness }: 
       Animated.timing(pulse, {
         toValue: 0,
         duration: 240,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }).start();
       return;
     }
@@ -39,12 +40,12 @@ export function CadenceRing({ value, unit = 'steps / min', active, closeness }: 
         Animated.timing(pulse, {
           toValue: 1,
           duration: PULSE_DURATION,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(pulse, {
           toValue: 0,
           duration: PULSE_DURATION,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ]),
     );
