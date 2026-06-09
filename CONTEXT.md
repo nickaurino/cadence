@@ -25,9 +25,9 @@ tied to implementation. Keep entries behavioral.
   forces an immediate re-match.
 
 - **Song switching** — user setting for how a managed-cadence change reaches the
-  music. "At song end" (default) finishes the current song and swaps the queue at
-  the boundary, showing a brief notice ("Pace changed. New songs up next, or skip
-  to switch now"). "Immediate" cuts and swaps as soon as the new queue is ready.
+  music. "Immediate" (default) cuts and swaps as soon as the new queue is ready.
+  "At song end" finishes the current song and swaps the queue at the boundary,
+  showing a brief notice ("Pace changed. New songs up next, or skip to switch now").
 
 - **Tempo (BPM)** — a song's beats per minute. Matched to managed cadence,
   allowing half-time and double-time.

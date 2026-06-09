@@ -22,9 +22,9 @@ function haptic(run: () => Promise<unknown>) {
   }
 }
 
-// A press-and-hold confirm. The destructive intent reads through a red bar that
-// sweeps the full length as you hold; a light tick on engage and a success buzz
-// on completion make finishing feel deliberate and earned. Release early cancels.
+// A press-and-hold confirm. A gold bar sweeps the full length as you hold; a light
+// tick on engage and a success buzz on completion make finishing feel deliberate
+// and earned. Release early cancels.
 export function HoldToEnd({
   onEnd,
   label = 'Hold to end session',
@@ -113,14 +113,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
-  pillHeld: { borderColor: colors.danger },
+  pillHeld: { borderColor: colors.accent },
   // Sweeps the full length of the pill (clipped to the rounded shape by overflow).
   fill: {
     position: 'absolute',
     left: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: colors.danger,
+    backgroundColor: colors.accent,
   },
   label: {
     fontSize: 16,

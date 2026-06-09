@@ -25,7 +25,7 @@ export const DEFAULT_MATCH_SETTINGS: MatchSettings = {
   doubleTime: true,
   tolerance: 0.06,
   sensitivity: 'balanced',
-  songSwitching: 'boundary',
+  songSwitching: 'immediate',
 };
 
 // Pace sensitivity → (drift threshold in spm, sustain time in ms) for moving
