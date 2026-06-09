@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Image, ActivityIndicator, AppState } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Image, ActivityIndicator, AppState, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -12,7 +12,9 @@ import { CadenceRing } from '@/components/CadenceRing';
 import { HoldToEnd } from '@/components/HoldToEnd';
 import { PressableScale } from '@/components/PressableScale';
 import { ProgressBar } from '@/components/ProgressBar';
+import { NoMotionState } from '@/components/NoMotionState';
 import { getPlaybackStatus } from '@/music/player';
+import { canReadMotion } from '@/sensors/cadence';
 import { SessionState, Vibe } from '@/types';
 import { colors } from '@/theme/colors';
 
@@ -23,6 +25,8 @@ export default function ActiveSession() {
   const [error, setError] = useState<string | null>(null);
   const [musicAvailable, setMusicAvailable] = useState(true);
   const [paceModal, setPaceModal] = useState(false);
+  // null = not yet checked; false = motion unavailable (no-motion state)
+  const [motionOk, setMotionOk] = useState<boolean | null>(null);
   const [playback, setPlayback] = useState<{ position: number; duration: number | null }>({
     position: 0,
     duration: null,
@@ -36,6 +40,7 @@ export default function ActiveSession() {
     engine.onStateChange(setState);
 
     isAvailable().then(setMusicAvailable);
+    canReadMotion().then(setMotionOk);
 
     (async () => {
       if (resume === '1') {
@@ -51,7 +56,10 @@ export default function ActiveSession() {
 
     const sub = AppState.addEventListener('change', (next) => {
       if (next === 'background') engine.persistNow();
-      else if (next === 'active') engine.seedCadenceFromHistory().catch(() => {});
+      else if (next === 'active') {
+        engine.seedCadenceFromHistory().catch(() => {});
+        canReadMotion().then(setMotionOk); // they may have toggled motion in Settings
+      }
     });
 
     return () => {
@@ -110,6 +118,26 @@ export default function ActiveSession() {
   }
 
   const engine = engineRef.current;
+
+  // No-motion state: motion is unavailable and the user hasn't fallen back to a
+  // manual pace yet. Show recoverable options instead of spinning in "Finding
+  // your pace". Once they set a manual pace (paceLocked), the normal session shows.
+  if (motionOk === false && !state.paceLocked) {
+    return (
+      <SafeAreaView style={styles.container} edges={[]}>
+        <NoMotionState
+          onOpenSettings={() => Linking.openSettings().catch(() => {})}
+          onSetPace={() => setPaceModal(true)}
+        />
+        <ManualPaceModal
+          visible={paceModal}
+          onClose={() => setPaceModal(false)}
+          onConfirm={(spm) => engine.setManualPace(spm).catch((e) => console.warn('[active] setManualPace failed:', e))}
+        />
+      </SafeAreaView>
+    );
+  }
+
   const s = state;
   const inPocket = state.inThePocket;
   const heroValue = inPocket

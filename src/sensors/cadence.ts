@@ -3,6 +3,19 @@ import { CADENCE_WINDOW_MS, CADENCE_MIN_DATA_SEC, CADENCE_TICK_MS } from '@/type
 
 type CadenceCallback = (stepsPerMinute: number) => void;
 
+// Whether the app can actually read steps right now: the device has a pedometer
+// AND motion permission is granted. Drives the no-motion state (see CONTEXT.md) so
+// the active screen never spins forever in "Finding your pace" when motion is off.
+export async function canReadMotion(): Promise<boolean> {
+  try {
+    if (!(await Pedometer.isAvailableAsync())) return false;
+    const perm = await Pedometer.getPermissionsAsync();
+    return perm.granted === true;
+  } catch {
+    return false;
+  }
+}
+
 export interface StepSample {
   t: number; // Date.now()
   steps: number; // cumulative steps since subscription start
