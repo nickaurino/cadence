@@ -130,15 +130,16 @@ export default function ActiveSession() {
     };
   }, []);
 
-  // While calibrating with motion still presumed OK, re-check periodically: a
-  // brand-new user can deny the OS motion prompt mid-session (it fired lazily on
-  // the first step subscription), and we want the no-motion state to catch that
-  // instead of spinning forever in "Finding your pace".
+  // While calibrating, re-probe motion every few seconds. This catches a late
+  // denial (the OS prompt fired lazily and the user dismissed it), AND — crucially
+  // — recovers if a probe throws transiently: we keep probing regardless of the
+  // current motionOk value, so a one-off failure can't permanently strand the user
+  // on the no-motion screen. Stops once calibration ends (e.g. manual pace).
   useEffect(() => {
-    if (!state?.isCalibrating || motionOk === false) return;
+    if (!state?.isCalibrating) return;
     const id = setInterval(() => canReadMotion().then(setMotionOk), 3000);
     return () => clearInterval(id);
-  }, [state?.isCalibrating, motionOk]);
+  }, [state?.isCalibrating]);
 
   // Poll playback position while a track is loaded so the progress bar advances.
   const trackId = state?.currentTrack?.id;
