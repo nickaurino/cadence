@@ -44,30 +44,55 @@ tied to implementation. Keep entries behavioral.
   prompt, explaining the value so the native dialog converts better. Cadence has
   two: **motion** (CMPedometer — "reads your steps to match music to your pace;
   never tracks location") and **Apple Music** (MusicKit — playback). Motion is
-  asked first (core, non-optional); Apple Music second (has a "continue without"
-  fallback). A denied permission shows a recoverable explainer with a deep-link to
-  iOS Settings, never a dead end.
+  asked first; Apple Music second. Both have a fallback rather than a dead end:
+  Apple Music → "continue without" (pace detection only); motion → "set my pace
+  manually" (manual pace works without the pedometer). Denial shows a recoverable
+  explainer with a deep-link to iOS Settings plus the fallback path.
+
+- **No-motion state** — the active-screen state when the pedometer is unavailable
+  (motion denied, revoked, or unsupported). Matching can't auto-follow, so instead
+  of silently spinning in "Finding your pace" the screen shows a recoverable
+  message with two paths: enable Motion in iOS Settings, or set your own pace
+  (manual pace / pace lock, which runs without the pedometer). The music-at-your-
+  tempo core still works in manual mode; only the "on the beat" feedback is absent.
 
 - **First match** — the aha moment onboarding aims for: the first time the music
   tempo visibly locks to the user's live cadence (first time "on the beat" / in
   the pocket). The whole first run is a runway to it.
 
-- **Feature tour** — a short, in-session set of contextual coachmarks that teach
-  the core concepts the first time they become relevant, rather than up front.
-  First-run scope is four: on-the-beat (the aha), the "Matching N" shift, pace
-  lock, and hold-to-end. Each is skippable; the whole tour is re-triggerable from
-  Settings. Ends with a Settings handoff ("good defaults — all tunable in
-  Settings"). Mechanism borrowed from the hobby-randomizer spotlight (measured
-  cutout, action-gated advance); see ADR 0005.
+- **Feature tour** — the set of contextual coachmarks that teach the core concepts
+  the first time they become relevant, rather than up front. Four of them:
+  on-the-beat (the aha), the "Matching N" shift, pace lock, and hold-to-end. They
+  are **independent and one-time**, not a linear sequence: each fires in whatever
+  session its trigger first occurs and is marked seen individually, so a user who
+  never shifts pace early still gets that coachmark whenever they first do. "Skip
+  tour" marks all remaining seen; the tour is re-triggerable from Settings. Ends
+  with a Settings handoff ("good defaults, all tunable in Settings") after the last
+  coachmark is seen. Mechanism borrowed from the hobby-randomizer spotlight
+  (measured cutout); see ADR 0005.
 
-- **Coachmark** — one step of the feature tour: a dimmed overlay with a cutout
-  around a real, measured on-screen element plus a short instruction. Advances on
-  the relevant real action (or a tap-to-dismiss for informational ones).
+- **Coachmark** — one coachmark of the feature tour: a dimmed overlay with a cutout
+  around a real, measured on-screen element plus a short instruction. Shows once
+  (gated on its trigger and an unseen flag), dismissed by the relevant real action
+  or a tap.
 
 - **Reset app** — a Settings action that clears onboarding + feature-tour state so
   both replay on next launch, and deep-links to iOS Settings for revoking Motion /
   Apple Music access (an app cannot revoke its own OS permissions). For testing and
   for users who want a clean slate.
+
+## Product principles
+
+- **Honesty firewall** — every user-facing claim must pass an evidence check before
+  it ships. Two rules: (1) **Performance/science claims** stay within graded
+  evidence (`docs/ideas/smart-recommendations-music-science.md`) and are attributed
+  + hedged, never flattened. Permitted: "~10% lower perceived effort, in studies."
+  Banned: "+15% endurance," "run longer," any bare stat. (2) **State claims** never
+  assert something the app can't verify in the moment, e.g. don't tell a motionless
+  manual-pace user "your steps are landing on the beat" (the on-beat coachmark is
+  gated on real detected cadence, not a manual lock). Origin: the prep agenda's
+  honesty rule + the music-science grading doc, formalized in
+  `docs/design-research/06-onboarding-psychology.md` §5.
 
 ## Matching terms
 

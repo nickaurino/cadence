@@ -32,13 +32,21 @@ Prep research (`docs/design-research/06-onboarding-psychology.md`,
 1. **Onboarding ends at the first match, not on home.** Flow: two framing screens
    (honest ~10% perceived-effort payoff → entrainment mechanism) → motion primer →
    Apple Music primer (with a gentle subscription disclaimer + "continue without"
-   fallback) → straight into a first guided session.
+   fallback) → straight into a first guided session. Neither permission is a hard
+   dead-end: Apple Music denial → pace-detection-only; motion denial → manual pace
+   (which runs without the pedometer). When motion is unavailable for any reason
+   the active screen shows a recoverable **no-motion state** (enable in Settings,
+   or set your own pace) instead of spinning in "Finding your pace."
 
-2. **The feature tour is in-session contextual coachmarks**, fired when each
-   concept first becomes relevant — not a post-onboarding carousel. First-run
-   scope is four coachmarks: on-the-beat (the aha), the "Matching N" pace shift,
-   pace lock, hold-to-end. It ends with a Settings handoff. Every step is skippable
-   and the whole tour is re-triggerable from Settings.
+2. **The feature tour is four independent, one-time contextual coachmarks**, each
+   gated on `(its own trigger) AND (not yet seen)` and persisted individually,
+   not a linear session-bound sequence. Scope: on-the-beat (the aha, gated on a
+   matched track actually playing, not just `inThePocket`), the "Matching N" pace
+   shift, pace lock, hold-to-end. They fire across whatever sessions their
+   triggers occur in, so a never-shift user still gets the shift coachmark later;
+   session resume can't re-fire a seen one. "Skip tour" marks all remaining seen;
+   the Settings handoff card shows after the last is seen. Re-triggerable from
+   Settings (clears all four flags).
 
 3. **Mechanism is ported from the hobby-randomizer spotlight** (`SpotlightOverlay`
    4-panel cutout, `TourContext` step machine, module-level setter shims for
