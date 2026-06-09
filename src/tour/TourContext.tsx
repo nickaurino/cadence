@@ -53,9 +53,13 @@ export function TourProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const persist = (next: SeenMap) => {
-    setSeen(next);
-    saveCoachmarksSeen(next).catch(() => {});
+  // Persist via a functional updater so we never write a stale `seen` snapshot.
+  const persist = (update: (prev: SeenMap) => SeenMap) => {
+    setSeen((prev) => {
+      const next = update(prev);
+      saveCoachmarksSeen(next).catch(() => {});
+      return next;
+    });
   };
 
   const request = (id: CoachmarkId) => {
@@ -63,12 +67,12 @@ export function TourProvider({ children }: { children: ReactNode }) {
   };
 
   const dismiss = (id: CoachmarkId) => {
-    persist(withSeen(seen, id));
+    persist((prev) => withSeen(prev, id));
     setCurrent((cur) => (cur === id ? null : cur));
   };
 
   const skipAll = () => {
-    persist(allSeenMap());
+    persist(() => allSeenMap());
     setCurrent(null);
   };
 

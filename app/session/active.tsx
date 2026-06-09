@@ -51,6 +51,7 @@ export default function ActiveSession() {
   // Feature tour (coachmarks). Refs mark the spotlight targets; we measure the
   // requested one into the overlay's screen-coordinate space.
   const tour = useTour();
+  const mounted = useRef(true);
   const heroRef = useRef<View>(null);
   const messageRef = useRef<View>(null);
   const lockRef = useRef<View>(null);
@@ -70,11 +71,15 @@ export default function ActiveSession() {
   };
 
   // Measure a target into screen coords (pageX/pageY) and request its coachmark.
+  // Those page coords map directly into the SpotlightOverlay's space because the
+  // overlay is an absoluteFill child of a full-screen SafeAreaView with edges={[]}
+  // (no inset). INVARIANT: if that SafeAreaView ever gets a top/bottom edge, the
+  // rects shift by the inset — measure relative to the overlay instead.
   function requestCoachmark(id: CoachmarkId) {
     const node = refFor[id].current;
     if (!node) return;
     node.measure((_x, _y, width, height, pageX, pageY) => {
-      if (width === 0 && height === 0) return; // not laid out yet
+      if (!mounted.current || (width === 0 && height === 0)) return; // unmounted / not laid out
       setTargetRect({ x: pageX, y: pageY, width, height });
       tour.request(id);
     });
@@ -125,6 +130,7 @@ export default function ActiveSession() {
     });
 
     return () => {
+      mounted.current = false;
       sub.remove();
       engine.stop();
     };
@@ -196,8 +202,9 @@ export default function ActiveSession() {
       requestCoachmark('paceLock');
       return;
     }
-    // 4. Hold to end — safety hint after the session has settled.
-    if (tour.seen.onTheBeat && !tour.seen.holdToEnd && holdHintReady) {
+    // 4. Hold to end — safety hint after the session has settled. Independent of
+    //    the aha so it still appears even if the on-beat moment was slow to come.
+    if (!tour.seen.holdToEnd && holdHintReady) {
       requestCoachmark('holdToEnd');
       return;
     }
