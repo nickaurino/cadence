@@ -8,7 +8,7 @@ import { PressableScale } from '@/components/PressableScale';
 
 export default function Home() {
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={[]}>
       <SettingsButton />
 
       <View style={styles.spacer} />

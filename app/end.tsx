@@ -25,7 +25,7 @@ export default function EndSession() {
   const s = parseSummary(summary);
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={[]}>
       <View style={styles.content}>
         <Text style={styles.title}>Nice work.</Text>
 

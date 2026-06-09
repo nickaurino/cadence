@@ -23,7 +23,7 @@ export default function SessionSetup() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={[]}>
       <SettingsButton />
 
       <View style={styles.spacer} />

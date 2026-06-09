@@ -107,7 +107,7 @@ export default function ActiveSession() {
     action.catch((e) => console.warn('[active] action failed:', e));
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={[]}>
       <View style={styles.spacer} />
 
       <View style={styles.statusRow}>

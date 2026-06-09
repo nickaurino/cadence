@@ -9,8 +9,9 @@ import {
 
 // IMPORTANT: the style goes on the Pressable itself (via an animated Pressable),
 // not a wrapper — otherwise flex/width layout collapses (segments shrink, full-
-// width CTAs become content-sized). Only `transform` is animated (native driver),
-// alongside static styles — never animate color/shadow here (driver mixing).
+// width CTAs become content-sized). The scale is JS-driven (useNativeDriver:false)
+// so it never emits the "onAnimatedValueUpdate with no listeners" warning that a
+// native-driven value does; the press scale is tiny, so JS is plenty smooth.
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface PressableScaleProps {
@@ -35,7 +36,7 @@ export function PressableScale({
   const animate = (to: number) =>
     Animated.spring(scale, {
       toValue: to,
-      useNativeDriver: true,
+      useNativeDriver: false,
       speed: 50,
       bounciness: 0,
     }).start();
