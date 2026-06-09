@@ -322,6 +322,7 @@ function makeSnapshot(overrides: Partial<PersistedSession> = {}): PersistedSessi
     page: 0,
     settings: SETTINGS,
     paceLocked: true,
+    managedCadence: 178,
     cadenceSum: 510,
     cadenceCount: 3,
     playedIds: ['s1', 's2'],
@@ -341,6 +342,7 @@ test('serialize returns null before start, and a v1 snapshot after', async () =>
   expect(snap!.vibe).toBe('hype');
   expect(snap!.tracks.map((t) => t.id)).toEqual(['t1', 't2']);
   expect(snap!.index).toBe(0);
+  expect(snap!.managedCadence).toBe(170); // driven managed cadence is carried
   expect(snap!.settings).toEqual(
     expect.objectContaining({ sensitivity: 'responsive', songSwitching: 'immediate' }),
   );
@@ -358,7 +360,7 @@ test('resumeFrom rehydrates state without refetching or replaying', async () => 
   expect(state.vibe).toBe('hype');
   expect(state.paceLocked).toBe(true);
   expect(state.isPlaying).toBe(true);
-  expect(state.managedCadence).toBe(Math.round(510 / 3)); // 170
+  expect(state.managedCadence).toBe(178); // stored managedCadence, not the avg (170)
   expect(state.currentTrack?.id).toBe('s2'); // index 1
 
   expect(engine.getQueuedTrackIds()).toEqual(['s3']); // tracks after index

@@ -83,6 +83,7 @@ export class SessionEngine {
       page: this._page,
       settings: this._settings,
       paceLocked: this._paceLocked,
+      managedCadence: this._state.managedCadence,
       cadenceSum: this._cadenceSum,
       cadenceCount: this._cadenceCount,
       playedIds: [...this._playedIds],
@@ -158,10 +159,11 @@ export class SessionEngine {
     this._committing = false;
     this._replenishing = false;
 
-    // managedCadence isn't stored; seed it from the session average as a target.
-    // Live cadence re-adjusts it via the normal drift logic.
+    // Prefer the stored managed cadence — it's the real target after any pace
+    // ramp. Fall back to the session average for forward-compat/safety.
     const managed =
-      snapshot.cadenceCount > 0 ? Math.round(snapshot.cadenceSum / snapshot.cadenceCount) : 0;
+      snapshot.managedCadence ??
+      (snapshot.cadenceCount > 0 ? Math.round(snapshot.cadenceSum / snapshot.cadenceCount) : 0);
 
     this._state = {
       vibe: snapshot.vibe,

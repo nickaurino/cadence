@@ -35,6 +35,7 @@ function makeSession(overrides: Partial<PersistedSession> = {}): PersistedSessio
       songSwitching: 'boundary',
     },
     paceLocked: false,
+    managedCadence: 0,
     cadenceSum: 0,
     cadenceCount: 0,
     playedIds: [],

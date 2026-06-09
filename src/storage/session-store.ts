@@ -10,6 +10,7 @@ export interface PersistedSession {
   page: number;
   settings: MatchSettings;
   paceLocked: boolean;
+  managedCadence: number;
   cadenceSum: number;
   cadenceCount: number;
   playedIds: string[];
