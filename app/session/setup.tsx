@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -6,6 +6,9 @@ import { Vibe } from '@/types';
 import { colors } from '@/theme/colors';
 import { SettingsButton } from '@/components/SettingsButton';
 import { PressableScale } from '@/components/PressableScale';
+import { SpotlightOverlay } from '@/components/SpotlightOverlay';
+import { TourModeChoice } from '@/components/TourModeChoice';
+import { useTourSpotlight } from '@/tour/useTourSpotlight';
 
 const VIBES: { id: Vibe; label: string }[] = [
   { id: 'hype', label: 'Hype' },
@@ -17,9 +20,21 @@ const VIBES: { id: Vibe; label: string }[] = [
 
 export default function SessionSetup() {
   const [vibe, setVibe] = useState<Vibe>('mix');
+  const [showModeChoice, setShowModeChoice] = useState(false);
+
+  const vibesRef = useRef<View>(null);
+  const goRef = useRef<View>(null);
+  const { tour, step, targetRect } = useTourSpotlight('setup', { vibes: vibesRef, go: goRef });
+
+  function startSession(demo: boolean) {
+    if (step?.id === 'setup-go') tour.advance();
+    router.push({ pathname: '/session/active', params: demo ? { vibe, demo: '1' } : { vibe } });
+  }
 
   function handleStart() {
-    router.push({ pathname: '/session/active', params: { vibe } });
+    // During the tour, "Let's go" first offers a real or simulated session.
+    if (step?.id === 'setup-go') setShowModeChoice(true);
+    else startSession(false);
   }
 
   return (
@@ -34,7 +49,7 @@ export default function SessionSetup() {
           Pick a sound. We&apos;ll match the tempo to your stride.
         </Text>
 
-        <View style={styles.vibeGrid}>
+        <View ref={vibesRef} collapsable={false} style={styles.vibeGrid}>
           {VIBES.map((v) => (
             <PressableScale
               key={v.id}
@@ -48,12 +63,39 @@ export default function SessionSetup() {
           ))}
         </View>
 
-        <PressableScale style={styles.startBtn} onPress={handleStart}>
-          <Text style={styles.startBtnText}>Let&apos;s go</Text>
-        </PressableScale>
+        <View ref={goRef} collapsable={false} style={styles.goWrap}>
+          <PressableScale style={styles.startBtn} onPress={handleStart}>
+            <Text style={styles.startBtnText}>Let&apos;s go</Text>
+          </PressableScale>
+        </View>
       </View>
 
       <View style={styles.spacer} />
+
+      {step && targetRect && !showModeChoice && (
+        <SpotlightOverlay
+          targetRect={targetRect}
+          copy={step.copy}
+          onDismiss={step.advance === 'tap' ? tour.advance : undefined}
+          onSkip={tour.skip}
+          passthrough
+        />
+      )}
+
+      {showModeChoice && (
+        <TourModeChoice
+          onReal={() => {
+            setShowModeChoice(false);
+            tour.chooseMode('real');
+            startSession(false);
+          }}
+          onDemo={() => {
+            setShowModeChoice(false);
+            tour.chooseMode('demo');
+            startSession(true);
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -72,10 +114,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   vibeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' },
-  vibeBtn: { borderRadius: 50, borderWidth: 1.5, borderColor: colors.border, paddingVertical: 12, paddingHorizontal: 22 },
-  vibeBtnActive: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
   vibeBtnText: { color: colors.muted, fontSize: 16, fontWeight: '600' },
   vibeBtnTextActive: { color: colors.accent },
+  vibeBtn: { borderRadius: 50, borderWidth: 1.5, borderColor: colors.border, paddingVertical: 12, paddingHorizontal: 22 },
+  vibeBtnActive: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
+  goWrap: { alignSelf: 'stretch' },
   startBtn: {
     backgroundColor: colors.accent,
     borderRadius: 50,

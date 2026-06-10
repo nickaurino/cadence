@@ -29,11 +29,14 @@ Prep research (`docs/design-research/06-onboarding-psychology.md`,
 
 ## Decision
 
-1. **Onboarding ends at the first match, not on home.** Flow: two framing screens
-   (honest ~10% perceived-effort payoff → entrainment mechanism) → **motion
-   heads-up** (informational, no Allow button) → **Apple Music primer** (gentle
-   subscription disclaimer + "continue without" fallback, always shown) → straight
-   into a first guided session.
+1. **Onboarding hands off to the guided tour** (revised 2026-06-09; originally
+   "ends at the first match"). Flow: two framing screens (honest ~10%
+   perceived-effort payoff → entrainment mechanism) → **motion primer** (the
+   Allow button issues a real step query, which is what actually fires the iOS
+   Motion dialog) → **Apple Music primer** (gentle subscription disclaimer +
+   "continue without" fallback, always shown) → completing it marks onboarding
+   done, arms the tour, and lands on **home**, where the tour immediately
+   spotlights Start and guides the user into their first session.
    - **Motion** gets an informational heads-up, not an Allow button: iOS won't
      reliably let an app re-prompt once motion is decided (`canAskAgain:false`),
      so the slide sets expectations and the OS prompt fires when the first session
@@ -48,17 +51,25 @@ Prep research (`docs/design-research/06-onboarding-psychology.md`,
      the iOS toggle, so auto-skip wrongly hid the screens. Already-granted users
      just tap through.
 
-2. **The feature tour is four independent, one-time contextual coachmarks**, each
-   gated on `(its own trigger) AND (not yet seen)` and persisted individually,
-   not a linear sequence. Scope: on-the-beat (the aha, gated on a matched track
-   actually playing, not just `inThePocket`), the "Matching N" pace shift, pace
-   lock, hold-to-end. **The tour runs only while a persisted `tour_enabled` flag
-   is on** (revised 2026-06-09 after device testing): it's activated for the
-   first session after onboarding and by Replay tour, and deactivated when all
-   four are seen, on "Skip tour", or when its session ends unfinished — so
-   partial coachmarks never leak into ordinary later sessions. Session resume
-   mid-tour continues it (the flag persists); a seen coachmark never re-fires.
-   The Settings handoff card shows after the last is seen.
+2. **The feature tour is a scripted, Dabble-style guided walkthrough** (REVISED
+   2026-06-09, superseding the engine-triggered coachmark model): a fixed step
+   sequence across home → setup → active (Start → vibes → Let's go → hero ring →
+   song card → pace lock → hold-to-end → Settings handoff), driven by
+   `src/tour/script.ts`. It runs when a persisted `tour_enabled` ("pending") flag
+   is armed — by onboarding completion or Replay tour — starting from the home
+   screen; finishing or skipping disarms it, so it never leaks into ordinary
+   sessions. At the session step the user chooses **real** (engine + music live
+   underneath) or **simulated** ("just show me around": canned `SessionState`,
+   no engine/pedometer/music) — both converge on the same walkthrough. Every
+   step shows Skip.
+
+   *Why the revision:* the original model fired each coachmark on live engine
+   triggers (first real on-beat moment, first pace shift). Device testing showed
+   it was effectively untestable indoors (the aha trigger needs real walking with
+   matched music) and invisible to users who don't move much, and partially-fired
+   coachmarks leaked into later sessions. The scripted tour is deterministic,
+   desk-testable, and matches the hobby-randomizer pattern the teardown
+   recommended.
 
 3. **Mechanism is ported from the hobby-randomizer spotlight** (`SpotlightOverlay`
    4-panel cutout, `TourContext` step machine, module-level setter shims for

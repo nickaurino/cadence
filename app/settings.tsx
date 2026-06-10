@@ -3,7 +3,7 @@ import { View, Text, Pressable, Switch, StyleSheet, ScrollView, Alert, Linking }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MatchSettings, DEFAULT_MATCH_SETTINGS } from '@/types';
-import { getMatchSettings, saveMatchSettings, resetOnboarding, clearCoachmarksSeen, setTourEnabled } from '@/storage/store';
+import { getMatchSettings, saveMatchSettings, resetOnboarding, setTourEnabled } from '@/storage/store';
 import { triggerReplayTour } from '@/tour/TourContext';
 import { colors } from '@/theme/colors';
 
@@ -32,7 +32,10 @@ export default function Settings() {
 
   function replayTour() {
     triggerReplayTour();
-    Alert.alert('Tour reset', "You'll see the in-session tips again on your next run.");
+    Alert.alert('Tour ready', 'The guided tour will start from the home screen.', [
+      { text: 'Take me home', onPress: () => router.replace('/home') },
+      { text: 'Later', style: 'cancel' },
+    ]);
   }
 
   function confirmResetApp() {
@@ -46,8 +49,7 @@ export default function Settings() {
           style: 'destructive',
           onPress: async () => {
             await resetOnboarding();
-            await clearCoachmarksSeen();
-            await setTourEnabled(false); // first session after onboarding re-activates it
+            await setTourEnabled(false); // onboarding completion re-arms the tour
             Alert.alert('Cadence reset', 'Reopen the app to start fresh.', [
               { text: 'Open iOS Settings', onPress: () => Linking.openSettings().catch(() => {}) },
               { text: 'Done', style: 'cancel' },
@@ -168,7 +170,7 @@ export default function Settings() {
           <Pressable style={[styles.aboutRow, styles.rowDivider]} onPress={replayTour}>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Replay tour</Text>
-              <Text style={styles.rowSub}>See the in-session tips again on your next run.</Text>
+              <Text style={styles.rowSub}>Run the guided walkthrough again from the home screen.</Text>
             </View>
           </Pressable>
           <Pressable style={styles.aboutRow} onPress={() => router.push('/credits')}>

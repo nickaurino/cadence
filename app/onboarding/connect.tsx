@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { authorize } from '@/music/auth';
+import { markOnboardingComplete, setTourEnabled } from '@/storage/store';
+import { triggerReplayTour } from '@/tour/TourContext';
 import { colors } from '@/theme/colors';
 import { PRIMERS } from '@/onboarding/copy';
 
@@ -12,17 +14,21 @@ export default function ConnectAppleMusic() {
   const [loading, setLoading] = useState(false);
   const [denied, setDenied] = useState(false);
 
-  // Onboarding flows straight into the first session (momentum to the aha);
-  // re-auth from the app root just returns home. markOnboardingComplete fires at
-  // session start, not here.
+  // Last onboarding screen. Completing it marks onboarding done and ARMS the
+  // guided feature tour, which picks the user up on the home screen (spotlight
+  // on Start) and walks them through their first session, Dabble-style.
   //
   // The primer is ALWAYS shown (no auto-skip on isAuthorized): MusicKit's
   // authorization status lags the Settings toggle, so auto-skipping wrongly hid
   // this screen. Already-authorized users just tap Connect and authorize()
   // resolves instantly; not-authorized users get the real prompt.
-  function proceed() {
-    if (from === 'onboarding') router.replace('/session/setup');
-    else router.replace('/home');
+  async function proceed() {
+    if (from === 'onboarding') {
+      await markOnboardingComplete().catch(() => {});
+      await setTourEnabled(true).catch(() => {});
+      triggerReplayTour(); // sync the live provider so home picks it up now
+    }
+    router.replace('/home');
   }
 
   async function handleConnect() {

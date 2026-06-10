@@ -68,22 +68,22 @@ tied to implementation. Keep entries behavioral.
   tempo visibly locks to the user's live cadence (first time "on the beat" / in
   the pocket). The whole first run is a runway to it.
 
-- **Feature tour** — the set of contextual coachmarks that teach the core concepts
-  the first time they become relevant, rather than up front. Four of them:
-  on-the-beat (the aha), the "Matching N" shift, pace lock, and hold-to-end. They
-  are **independent and one-time**, not a linear sequence, and the tour runs
-  **only while enabled**: the first session after onboarding, or the session after
-  "Replay tour" in Settings. It turns off when all four are seen, on "Skip tour",
-  or when its session ends unfinished — coachmarks never appear in ordinary
-  sessions. (Session resume mid-tour continues it.) Ends with a Settings handoff
-  ("good defaults, all tunable in Settings") after the last coachmark is seen.
-  Mechanism borrowed from the hobby-randomizer spotlight (measured cutout); see
-  ADR 0005.
+- **Feature tour** — a **scripted, guided walkthrough** (Dabble-style) of the app:
+  a fixed sequence of spotlight steps across home → vibe setup → the session
+  screen (Start button → vibes → Let's go → hero ring → song card → pace lock →
+  hold-to-end), ending in the Settings handoff. It runs when **pending**: armed by
+  onboarding completion or "Replay tour" in Settings, it picks the user up on the
+  home screen and walks them through; finishing or skipping disarms it, so it
+  never appears in ordinary sessions. At the session step the user chooses a
+  **real session** (engine and music live under the tour) or a **simulated one**
+  ("just show me around": canned session state, no engine, no music) — both get
+  the same walkthrough. Every step shows Skip. Engine-state-triggered coachmarks
+  were tried first and rejected: untestable at a desk and invisible to users who
+  don't move much. See ADR 0005.
 
-- **Coachmark** — one coachmark of the feature tour: a dimmed overlay with a cutout
-  around a real, measured on-screen element plus a short instruction. Shows once
-  (gated on its trigger and an unseen flag), dismissed by the relevant real action
-  or a tap.
+- **Tour step** — one step of the feature tour: a dimmed overlay with a measured
+  cutout around the step's target plus a short instruction. Advances on the real
+  action (tapping Start / Let's go) or a "Got it" tap.
 
 - **Reset app** — a Settings action that clears onboarding + feature-tour state so
   both replay on next launch, and deep-links to iOS Settings for revoking Motion /

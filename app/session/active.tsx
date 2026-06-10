@@ -7,7 +7,6 @@ import { SessionEngine } from '@/engine/session';
 import { sessionStatusLabel } from '@/engine/status';
 import { isAvailable } from '@/music/auth';
 import { loadPersisted, shouldResume, clearPersisted } from '@/storage/session-store';
-import { hasCompletedOnboarding, markOnboardingComplete } from '@/storage/store';
 import { FIRST_RUN_REASSURANCE } from '@/onboarding/copy';
 import { ManualPaceModal } from '@/components/ManualPaceModal';
 import { CadenceRing } from '@/components/CadenceRing';
@@ -15,28 +14,48 @@ import { HoldToEnd } from '@/components/HoldToEnd';
 import { PressableScale } from '@/components/PressableScale';
 import { ProgressBar } from '@/components/ProgressBar';
 import { NoMotionState } from '@/components/NoMotionState';
-import { SpotlightOverlay, TargetRect } from '@/components/SpotlightOverlay';
+import { SpotlightOverlay } from '@/components/SpotlightOverlay';
 import { TourHandoff } from '@/components/TourHandoff';
 import { getPlaybackStatus } from '@/music/player';
 import { canReadMotion } from '@/sensors/cadence';
-import { useTour } from '@/tour/TourContext';
-import { CoachmarkId } from '@/tour/tourState';
-import { COACHMARK_COPY } from '@/tour/coachmarks';
+import { useTourSpotlight } from '@/tour/useTourSpotlight';
 import { SessionState, Vibe } from '@/types';
 import { colors } from '@/theme/colors';
 
+// Canned session state for the tour's "just show me around" mode: no engine, no
+// pedometer, no music. Clearly sample data, never presented as a real reading.
+const DEMO_STATE: SessionState = {
+  vibe: 'mix',
+  perceivedCadence: 142,
+  managedCadence: 142,
+  isCalibrating: false,
+  isLoadingTracks: false,
+  paceLocked: false,
+  inThePocket: true,
+  pocketCloseness: 1,
+  isPlaying: true,
+  notice: null,
+  currentTrack: {
+    id: 'demo',
+    name: 'Sample song',
+    artist: 'Matched to your pace',
+    albumArtUrl: '',
+    tempo: 142,
+  },
+  queue: [],
+  startedAt: 0,
+};
+
 export default function ActiveSession() {
-  const { vibe, resume } = useLocalSearchParams<{ vibe: Vibe; resume?: string }>();
+  const { vibe, resume, demo } = useLocalSearchParams<{ vibe: Vibe; resume?: string; demo?: string }>();
+  const isDemo = demo === '1';
   const engineRef = useRef(new SessionEngine());
-  const [state, setState] = useState<SessionState | null>(null);
+  const [state, setState] = useState<SessionState | null>(isDemo ? DEMO_STATE : null);
   const [error, setError] = useState<string | null>(null);
   const [musicAvailable, setMusicAvailable] = useState(true);
   const [paceModal, setPaceModal] = useState(false);
   // null = not yet checked; false = motion unavailable (no-motion state)
   const [motionOk, setMotionOk] = useState<boolean | null>(null);
-  // True for the very first session (onboarding wasn't complete on mount) so the
-  // pre-music wait can show a reassurance line.
-  const [firstRun, setFirstRun] = useState(false);
   // Once the user picks a manual pace from the no-motion screen, don't let that
   // screen re-trap them (e.g. recalibrate clears paceLocked) for the session.
   const [noMotionDismissed, setNoMotionDismissed] = useState(false);
@@ -48,70 +67,26 @@ export default function ActiveSession() {
   // song's position; ignore reads for a beat so the bar doesn't flash stale.
   const trackChangeHoldUntil = useRef(0);
 
-  // Feature tour (coachmarks). Refs mark the spotlight targets; we measure the
-  // requested one into the overlay's screen-coordinate space.
-  const tour = useTour();
-  const mounted = useRef(true);
+  // Guided tour: scripted spotlight steps over the session screen.
   const heroRef = useRef<View>(null);
-  const messageRef = useRef<View>(null);
   const lockRef = useRef<View>(null);
+  const songRef = useRef<View>(null);
   const holdRef = useRef<View>(null);
-  const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
-  const [showHandoff, setShowHandoff] = useState(false);
-  // null = baseline not yet set; tracks allSeen to detect the in-session transition.
-  const prevAllSeen = useRef<boolean | null>(null);
-  // holdToEnd coachmark becomes eligible after the session has run a bit.
-  const [holdHintReady, setHoldHintReady] = useState(false);
-
-  const refFor: Record<CoachmarkId, React.RefObject<View | null>> = {
-    onTheBeat: heroRef,
-    paceShift: messageRef,
-    paceLock: lockRef,
-    holdToEnd: holdRef,
-  };
-
-  // Measure a target into screen coords (pageX/pageY) and request its coachmark.
-  // Those page coords map directly into the SpotlightOverlay's space because the
-  // overlay is an absoluteFill child of a full-screen SafeAreaView with edges={[]}
-  // (no inset). INVARIANT: if that SafeAreaView ever gets a top/bottom edge, the
-  // rects shift by the inset — measure relative to the overlay instead.
-  function requestCoachmark(id: CoachmarkId) {
-    const node = refFor[id].current;
-    if (!node) return;
-    node.measure((_x, _y, width, height, pageX, pageY) => {
-      if (!mounted.current || (width === 0 && height === 0)) return; // unmounted / not laid out
-      setTargetRect({ x: pageX, y: pageY, width, height });
-      tour.request(id);
-    });
-  }
-
-  function dismissCoachmark(id: CoachmarkId) {
-    tour.dismiss(id);
-    setTargetRect(null);
-  }
+  const { tour, step, targetRect } = useTourSpotlight('active', {
+    hero: heroRef,
+    lock: lockRef,
+    song: songRef,
+    hold: holdRef,
+  });
 
   useEffect(() => {
-    const t = setTimeout(() => setHoldHintReady(true), 45000);
-    return () => clearTimeout(t);
-  }, []);
+    if (isDemo) return; // demo: no engine, no sensors, no persistence
 
-  useEffect(() => {
     const engine = engineRef.current;
     engine.onStateChange(setState);
 
     isAvailable().then(setMusicAvailable);
     canReadMotion().then(setMotionOk);
-
-    // Reaching a session is what completes onboarding (idempotent). If it wasn't
-    // complete on mount, this is the first session -> enable the reassurance line
-    // and turn on the feature tour (its only other entry point is Replay tour).
-    hasCompletedOnboarding().then((done) => {
-      if (!done) {
-        setFirstRun(true);
-        tour.activate();
-      }
-      markOnboardingComplete().catch(() => {});
-    });
 
     (async () => {
       if (resume === '1') {
@@ -134,7 +109,6 @@ export default function ActiveSession() {
     });
 
     return () => {
-      mounted.current = false;
       sub.remove();
       engine.stop();
     };
@@ -146,7 +120,7 @@ export default function ActiveSession() {
   // current motionOk value, so a one-off failure can't permanently strand the user
   // on the no-motion screen. Stops once calibration ends (e.g. manual pace).
   useEffect(() => {
-    if (!state?.isCalibrating) return;
+    if (isDemo || !state?.isCalibrating) return;
     const id = setInterval(() => canReadMotion().then(setMotionOk), 3000);
     return () => clearInterval(id);
   }, [state?.isCalibrating]);
@@ -154,6 +128,7 @@ export default function ActiveSession() {
   // Poll playback position while a track is loaded so the progress bar advances.
   const trackId = state?.currentTrack?.id;
   useEffect(() => {
+    if (isDemo) return; // demo shows a static bar
     if (!trackId) {
       setPlayback({ position: 0, duration: null });
       return;
@@ -178,61 +153,20 @@ export default function ActiveSession() {
     };
   }, [trackId]);
 
-  // Coachmark triggers. Only while the tour is ENABLED (first session after
-  // onboarding, or the session after Replay tour — never ordinary sessions).
-  // Each fires once (seen flag), one at a time (tour.current guard). No
-  // coachmarks in the no-motion fallback. See ADR 0005 / the spec for the design.
-  useEffect(() => {
-    if (!tour.ready || !tour.enabled || tour.current || !state || motionOk === false) return;
-    const s = state;
-    const inPocket = s.inThePocket;
-
-    // 1. On the beat — a REAL detected on-beat moment with music playing (never a
-    //    manual lock, never pre-music). This is the aha.
-    if (
-      !tour.seen.onTheBeat &&
-      inPocket && s.currentTrack && s.isPlaying && !s.isLoadingTracks &&
-      !s.paceLocked && s.perceivedCadence > 0
-    ) {
-      requestCoachmark('onTheBeat');
-      return;
-    }
-    // 2. Pace shift — perceived has moved off managed and the "Matching N" chip is up.
-    if (!tour.seen.paceShift && !inPocket && s.managedCadence > 0 && !s.paceLocked && !s.isCalibrating) {
-      requestCoachmark('paceShift');
-      return;
-    }
-    // 3. Pace lock — taught after the aha, at a calm in-pocket moment.
-    if (tour.seen.onTheBeat && !tour.seen.paceLock && inPocket && !s.paceLocked) {
-      requestCoachmark('paceLock');
-      return;
-    }
-    // 4. Hold to end — safety hint after the session has settled. Independent of
-    //    the aha so it still appears even if the on-beat moment was slow to come.
-    if (!tour.seen.holdToEnd && holdHintReady) {
-      requestCoachmark('holdToEnd');
-      return;
-    }
-  }, [state, tour.ready, tour.enabled, tour.current, tour.seen, motionOk, holdHintReady]);
-
-  // Settings handoff: show once, only when the last coachmark is seen DURING this
-  // session (false -> true transition), not on every session where it's already done.
-  useEffect(() => {
-    if (!tour.ready) return;
-    if (prevAllSeen.current === null) {
-      prevAllSeen.current = tour.allSeen; // baseline at mount, no show
-      return;
-    }
-    if (!prevAllSeen.current && tour.allSeen) setShowHandoff(true);
-    prevAllSeen.current = tour.allSeen;
-  }, [tour.allSeen, tour.ready]);
+  function exitTour(skipped: boolean) {
+    if (skipped) tour.skip();
+    else tour.end();
+    if (isDemo) router.replace('/home'); // demo session only exists for the tour
+  }
 
   async function handleEnd() {
+    if (isDemo) {
+      exitTour(false);
+      return;
+    }
+    if (tour.running) tour.skip(); // real session ends mid-tour: bail cleanly
     const engine = engineRef.current;
     const summary = engine.getSummary();
-    // The tour lives in one session: if it didn't finish here, it doesn't leak
-    // into later sessions (Replay tour re-enables it).
-    if (tour.enabled) tour.deactivate();
     await engine.stop();
     router.replace({ pathname: '/end', params: { summary: JSON.stringify(summary) } });
   }
@@ -257,8 +191,8 @@ export default function ActiveSession() {
   // No-motion state: motion is unavailable and the user hasn't fallen back to a
   // manual pace yet. Show recoverable options instead of spinning in "Finding
   // your pace". `noMotionDismissed` keeps recalibrate (which clears paceLocked)
-  // from re-trapping them here for the rest of the session.
-  if (motionOk === false && !state.paceLocked && !noMotionDismissed) {
+  // from re-trapping them here for the rest of the session. Never in demo mode.
+  if (!isDemo && motionOk === false && !state.paceLocked && !noMotionDismissed) {
     return (
       <SafeAreaView style={styles.container} edges={[]}>
         <NoMotionState
@@ -296,7 +230,7 @@ export default function ActiveSession() {
     if (s.isCalibrating)
       return (
         <Text style={styles.msgMuted} numberOfLines={1}>
-          {firstRun ? FIRST_RUN_REASSURANCE : 'Start moving to match the beat.'}
+          {tour.running ? FIRST_RUN_REASSURANCE : 'Start moving to match the beat.'}
         </Text>
       );
     if (!inPocket && s.managedCadence > 0)
@@ -310,9 +244,11 @@ export default function ActiveSession() {
 
   // Playback/native actions can reject (e.g. a MusicKit hiccup, skip at a queue
   // edge); swallow so a transient failure never surfaces as an uncaught-promise
-  // crash banner.
-  const run = (action: Promise<unknown>) =>
-    action.catch((e) => console.warn('[active] action failed:', e));
+  // crash banner. In demo mode every action is a no-op.
+  const run = (action: () => Promise<unknown>) => {
+    if (isDemo) return;
+    action().catch((e) => console.warn('[active] action failed:', e));
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
@@ -324,7 +260,7 @@ export default function ActiveSession() {
           {sessionStatusLabel(state)}
         </Text>
         <View ref={lockRef} collapsable={false}>
-          <PressableScale hitSlop={14} onPress={() => engine.setPaceLocked(!state.paceLocked)}>
+          <PressableScale hitSlop={14} onPress={() => run(() => Promise.resolve(engine.setPaceLocked(!state.paceLocked)))}>
             <SymbolView
               name={state.paceLocked ? 'lock.fill' : 'lock.open.fill'}
               size={18}
@@ -339,9 +275,9 @@ export default function ActiveSession() {
         <CadenceRing value={heroValue} active={inPocket} closeness={state.pocketCloseness} />
       </View>
 
-      <View ref={messageRef} collapsable={false} style={styles.messageSlot}>{renderMessage()}</View>
+      <View style={styles.messageSlot}>{renderMessage()}</View>
 
-      <View style={styles.songArea}>
+      <View ref={songRef} collapsable={false} style={styles.songArea}>
         {state.currentTrack ? (
             <View style={styles.trackBlock}>
             <View style={styles.trackCard}>
@@ -361,10 +297,10 @@ export default function ActiveSession() {
                 </Text>
               </View>
               <View style={styles.inlineControls}>
-                <PressableScale hitSlop={12} onPress={() => run(engine.skipPrevious())}>
+                <PressableScale hitSlop={12} onPress={() => run(() => engine.skipPrevious())}>
                   <SymbolView name="backward.end.fill" size={20} type="monochrome" tintColor={colors.text} />
                 </PressableScale>
-                <PressableScale hitSlop={12} onPress={() => run(engine.togglePlayPause())}>
+                <PressableScale hitSlop={12} onPress={() => run(() => engine.togglePlayPause())}>
                   <SymbolView
                     name={state.isPlaying ? 'pause.fill' : 'play.fill'}
                     size={22}
@@ -372,12 +308,15 @@ export default function ActiveSession() {
                     tintColor={colors.text}
                   />
                 </PressableScale>
-                <PressableScale hitSlop={12} onPress={() => run(engine.skipNext())}>
+                <PressableScale hitSlop={12} onPress={() => run(() => engine.skipNext())}>
                   <SymbolView name="forward.end.fill" size={20} type="monochrome" tintColor={colors.text} />
                 </PressableScale>
               </View>
             </View>
-            <ProgressBar position={playback.position} duration={playback.duration} />
+            <ProgressBar
+              position={isDemo ? 76 : playback.position}
+              duration={isDemo ? 200 : playback.duration}
+            />
             </View>
           ) : (
             !state.isCalibrating && !state.isLoadingTracks ? (
@@ -386,7 +325,7 @@ export default function ActiveSession() {
           )}
         </View>
 
-        {!musicAvailable && (
+        {!isDemo && !musicAvailable && (
           <Text style={styles.noMusicLabel}>Enable Apple Music for playback control</Text>
         )}
 
@@ -394,7 +333,7 @@ export default function ActiveSession() {
           <PressableScale style={styles.pill} onPress={() => setPaceModal(true)}>
             <Text style={styles.secondaryBtnText}>Set pace</Text>
           </PressableScale>
-          {motionOk !== false && (
+          {!isDemo && motionOk !== false && (
             <PressableScale style={styles.pill} onPress={() => engine.recalibrate()}>
               <Text style={styles.secondaryBtnText}>↺  Recalibrate</Text>
             </PressableScale>
@@ -410,29 +349,26 @@ export default function ActiveSession() {
       <ManualPaceModal
         visible={paceModal}
         onClose={() => setPaceModal(false)}
-        onConfirm={(spm) => run(engine.setManualPace(spm))}
+        onConfirm={(spm) => run(() => engine.setManualPace(spm))}
       />
 
-      {tour.current && targetRect && (
+      {step && targetRect && (
         <SpotlightOverlay
           targetRect={targetRect}
-          copy={COACHMARK_COPY[tour.current]}
-          onDismiss={() => dismissCoachmark(tour.current!)}
-          onSkip={() => {
-            tour.skipAll();
-            setTargetRect(null);
-          }}
+          copy={step.copy}
+          onDismiss={step.advance === 'tap' ? tour.advance : undefined}
+          onSkip={() => exitTour(true)}
           passthrough
         />
       )}
 
-      {showHandoff && (
+      {tour.finished && (
         <TourHandoff
           onSettings={() => {
-            setShowHandoff(false);
+            exitTour(false);
             router.push('/settings');
           }}
-          onLater={() => setShowHandoff(false)}
+          onLater={() => exitTour(false)}
         />
       )}
     </SafeAreaView>

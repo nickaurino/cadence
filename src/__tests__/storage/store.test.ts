@@ -4,15 +4,11 @@ import {
   hasCompletedOnboarding,
   getMatchSettings,
   saveMatchSettings,
-  getCoachmarksSeen,
-  saveCoachmarksSeen,
-  clearCoachmarksSeen,
   resetOnboarding,
   isTourEnabled,
   setTourEnabled,
 } from '@/storage/store';
 import { DEFAULT_MATCH_SETTINGS } from '@/types';
-import { allUnseen, withSeen } from '@/tour/tourState';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
@@ -42,30 +38,6 @@ test('fills missing fields from defaults (forward-compatible)', async () => {
   const loaded = await getMatchSettings();
   expect(loaded.exact).toBe(false);
   expect(loaded.doubleTime).toBe(DEFAULT_MATCH_SETTINGS.doubleTime); // backfilled
-});
-
-test('coachmarks default to all unseen', async () => {
-  expect(await getCoachmarksSeen()).toEqual(allUnseen());
-});
-
-test('saves and reloads coachmark seen flags', async () => {
-  await saveCoachmarksSeen(withSeen(allUnseen(), 'onTheBeat'));
-  const loaded = await getCoachmarksSeen();
-  expect(loaded.onTheBeat).toBe(true);
-  expect(loaded.paceShift).toBe(false);
-});
-
-test('unknown/missing coachmark keys default to unseen (forward-compatible)', async () => {
-  await AsyncStorage.setItem('coachmarks_seen', JSON.stringify({ onTheBeat: true }));
-  const loaded = await getCoachmarksSeen();
-  expect(loaded.onTheBeat).toBe(true);
-  expect(loaded.holdToEnd).toBe(false); // backfilled
-});
-
-test('clearCoachmarksSeen resets to all unseen', async () => {
-  await saveCoachmarksSeen(withSeen(allUnseen(), 'paceLock'));
-  await clearCoachmarksSeen();
-  expect(await getCoachmarksSeen()).toEqual(allUnseen());
 });
 
 test('tour enabled flag defaults off, persists, and clears', async () => {

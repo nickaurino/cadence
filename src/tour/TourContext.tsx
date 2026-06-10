@@ -1,52 +1,45 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import {
-  CoachmarkId,
-  SeenMap,
-  allUnseen,
-  allSeenMap,
-  withSeen,
-  shouldShow,
-  allSeen as allSeenFn,
-} from '@/tour/tourState';
-import {
-  getCoachmarksSeen,
-  saveCoachmarksSeen,
-  clearCoachmarksSeen,
-  isTourEnabled,
-  setTourEnabled,
-} from '@/storage/store';
+import { TourStep, stepAt, TOUR_STEP_COUNT } from '@/tour/script';
+import { isTourEnabled, setTourEnabled } from '@/storage/store';
+
+export type TourMode = 'real' | 'demo' | null;
 
 interface TourValue {
-  ready: boolean; // seen flags + enabled flag loaded from storage
-  // The tour shows coachmarks ONLY while enabled: the first session after
-  // onboarding, or the session after Replay tour. Never ordinary sessions.
-  enabled: boolean;
-  current: CoachmarkId | null; // which coachmark is showing now
-  seen: SeenMap;
-  allSeen: boolean;
-  activate: () => void; // turn the tour on (first session after onboarding)
-  deactivate: () => void; // turn it off (tour's session ended without finishing)
-  request: (id: CoachmarkId) => void; // show id if enabled, unseen, nothing showing
-  dismiss: (id: CoachmarkId) => void; // mark seen, hide; last one disables the tour
-  skipAll: () => void; // mark every coachmark seen and disable the tour
+  ready: boolean; // pending flag loaded from storage
+  // pending: the tour should run. Set on onboarding completion and by Replay
+  // tour; cleared when the tour finishes or is skipped. Persisted, so a kill
+  // mid-tour restarts it from the top on the next visit to home.
+  pending: boolean;
+  running: boolean; // the tour is live right now
+  mode: TourMode; // chosen at the session step: real session or simulated
+  stepIndex: number;
+  step: TourStep | null; // null when not running or past the last step
+  finished: boolean; // ran past the last step (time for the handoff)
+  begin: () => void; // home calls this when ready && pending
+  chooseMode: (mode: Exclude<TourMode, null>) => void;
+  advance: () => void;
+  skip: () => void; // bail out entirely
+  end: () => void; // normal completion (after the handoff)
 }
 
 const noop = () => {};
 const TourContext = createContext<TourValue>({
   ready: false,
-  enabled: false,
-  current: null,
-  seen: allUnseen(),
-  allSeen: false,
-  activate: noop,
-  deactivate: noop,
-  request: noop,
-  dismiss: noop,
-  skipAll: noop,
+  pending: false,
+  running: false,
+  mode: null,
+  stepIndex: 0,
+  step: null,
+  finished: false,
+  begin: noop,
+  chooseMode: noop,
+  advance: noop,
+  skip: noop,
+  end: noop,
 });
 
-// Module-level shim so Settings can replay the tour without prop-drilling through
-// the tree (mirrors the hobby-randomizer pattern).
+// Module-level shim so Settings can replay the tour without prop-drilling
+// (mirrors the hobby-randomizer pattern).
 let _replay: (() => void) | null = null;
 export function registerTourReplay(fn: () => void) {
   _replay = fn;
@@ -57,84 +50,65 @@ export function triggerReplayTour() {
 
 export function TourProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
-  const [enabled, setEnabled] = useState(false);
-  const [seen, setSeen] = useState<SeenMap>(allUnseen());
-  const [current, setCurrent] = useState<CoachmarkId | null>(null);
+  const [pending, setPending] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [mode, setMode] = useState<TourMode>(null);
+  const [stepIndex, setStepIndex] = useState(0);
 
   useEffect(() => {
-    Promise.all([getCoachmarksSeen(), isTourEnabled()]).then(([s, e]) => {
-      setSeen(s);
-      setEnabled(e);
+    isTourEnabled().then((p) => {
+      setPending(p);
       setReady(true);
     });
   }, []);
 
-  // Persist via a functional updater so we never write a stale `seen` snapshot.
-  const persist = (update: (prev: SeenMap) => SeenMap) => {
-    setSeen((prev) => {
-      const next = update(prev);
-      saveCoachmarksSeen(next).catch(() => {});
-      return next;
-    });
+  const setPendingPersisted = (p: boolean) => {
+    setPending(p);
+    setTourEnabled(p).catch(() => {});
   };
 
-  const setEnabledPersisted = (e: boolean) => {
-    setEnabled(e);
-    setTourEnabled(e).catch(() => {});
+  const begin = () => {
+    setStepIndex(0);
+    setMode(null);
+    setRunning(true);
   };
 
-  const activate = () => setEnabledPersisted(true);
+  const chooseMode = (m: Exclude<TourMode, null>) => setMode(m);
 
-  const deactivate = () => {
-    setEnabledPersisted(false);
-    setCurrent(null);
+  const advance = () => setStepIndex((i) => i + 1);
+
+  const stop = () => {
+    setRunning(false);
+    setMode(null);
+    setStepIndex(0);
+    setPendingPersisted(false);
   };
 
-  const request = (id: CoachmarkId) => {
-    if (!enabled) return;
-    setCurrent((cur) => (shouldShow(seen, cur, id) ? id : cur));
-  };
+  const skip = stop;
+  const end = stop;
 
-  const dismiss = (id: CoachmarkId) => {
-    persist((prev) => withSeen(prev, id));
-    setCurrent((cur) => (cur === id ? null : cur));
-    // If that was the last coachmark, the all-seen effect below disables the tour.
-  };
-
-  const skipAll = () => {
-    persist(() => allSeenMap());
-    setEnabledPersisted(false);
-    setCurrent(null);
-  };
-
-  // When every coachmark is seen, the tour is complete: disable it.
   useEffect(() => {
-    if (ready && enabled && allSeenFn(seen)) setEnabledPersisted(false);
-  }, [ready, enabled, seen]);
-
-  // Replay tour: clear seen flags and re-enable for the next session.
-  useEffect(() => {
-    registerTourReplay(() => {
-      clearCoachmarksSeen().catch(() => {});
-      setSeen(allUnseen());
-      setCurrent(null);
-      setEnabledPersisted(true);
-    });
+    registerTourReplay(() => setPendingPersisted(true));
   }, []);
+
+  const step = running ? stepAt(stepIndex) : null;
+  const finished = running && stepIndex >= TOUR_STEP_COUNT;
 
   return (
     <TourContext.Provider
       value={{
         ready,
-        enabled,
-        current,
-        seen,
-        allSeen: allSeenFn(seen),
-        activate,
-        deactivate,
-        request,
-        dismiss,
-        skipAll,
+        pending,
+        running,
+        mode,
+        stepIndex,
+        step,
+        finished,
+        begin,
+        chooseMode,
+        advance,
+        skip,
+        end,
       }}
     >
       {children}
