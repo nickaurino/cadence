@@ -4,15 +4,22 @@
     "slug": "cadence",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "scheme": "cadence",
     "platforms": ["ios"],
     "ios": {
       "bundleIdentifier": "com.nickaurino.cadence",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSAppleMusicUsageDescription": "Cadence plays songs that match your walking and running pace.",
-        "NSMotionUsageDescription": "Cadence uses motion sensors to detect your walking and running pace.",
-        "NSHealthShareUsageDescription": "Cadence reads step count to match music to your cadence."
-      },
+        "NSAppleMusicUsageDescription": "Cadence plays songs from Apple Music whose tempo matches your walking or running pace.",
+        "NSMotionUsageDescription": "Cadence reads your steps per minute with the motion sensors to match music to your pace. It never tracks your location.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0c0c0d"
     },
     "plugins": [
       "expo-router",
