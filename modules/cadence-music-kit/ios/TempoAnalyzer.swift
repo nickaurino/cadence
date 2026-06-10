@@ -27,7 +27,9 @@ enum TempoAnalyzer {
   private static let maxDecodeSeconds = 35.0
 
   static func features(forPreviewURL urlString: String) async throws -> TrackFeatures? {
-    guard let url = URL(string: urlString) else { return nil }
+    // JS-exposed input: require https so a hostile/buggy caller can't point this
+    // at file:// or other schemes URLSession would happily read.
+    guard let url = URL(string: urlString), url.scheme?.lowercased() == "https" else { return nil }
 
     // "Undeterminable" is the contract for anything that isn't analyzable audio:
     // an expired/403 preview URL returns an HTML error page, which must surface
