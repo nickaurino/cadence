@@ -7,6 +7,7 @@ import { colors } from '@/theme/colors';
 import { SettingsButton } from '@/components/SettingsButton';
 import { PressableScale } from '@/components/PressableScale';
 import { SpotlightOverlay } from '@/components/SpotlightOverlay';
+import { TourHandoff } from '@/components/TourHandoff';
 import { useTourSpotlight } from '@/tour/useTourSpotlight';
 
 export default function Home() {
@@ -49,9 +50,11 @@ export default function Home() {
           targetRect={targetRect}
           copy={step.copy}
           onSkip={tour.skip}
-          passthrough
+          cardPosition={step.cardPosition}
         />
       )}
+
+      {tour.finished && <TourHandoff onDone={tour.end} />}
     </SafeAreaView>
   );
 }

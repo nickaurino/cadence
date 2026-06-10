@@ -1,23 +1,26 @@
 // The feature tour is a SCRIPTED, Dabble-style guided walkthrough: a fixed
-// sequence of spotlight steps across home -> vibe setup -> the session screen.
-// It runs when pending (first launch after onboarding, or Replay tour) and the
-// user is locked into the sequence only loosely: every step shows Skip.
+// sequence of spotlight steps across home -> vibe setup -> a SIMULATED session
+// (canned state, no engine, no music). It runs when pending (first launch after
+// onboarding, or Replay tour). During the tour everything except the spotlit
+// target is blocked; every step shows Skip.
 //
 // Copy rules: honesty firewall (no unverifiable state claims), no em dashes.
 
 export type TourScreen = 'home' | 'setup' | 'active';
 
 // Spotlight targets, one ref per target on its screen.
-export type TourTarget = 'start' | 'vibes' | 'go' | 'hero' | 'lock' | 'song' | 'hold';
+export type TourTarget = 'start' | 'vibes' | 'go' | 'hero' | 'song' | 'pills' | 'lock' | 'hold';
 
 export interface TourStep {
   id: string;
   screen: TourScreen;
   target: TourTarget;
   copy: string;
-  // 'action' = advances when the user performs the real action (tap Start /
-  // Let's go). 'tap' = advances on the card's Got it button.
+  // 'action' = advances when the user performs the real action (tap Start, tap
+  // Let's go, hold to end). 'tap' = advances on the card's Got it button.
   advance: 'action' | 'tap';
+  // Force the copy card above or below the target (default: auto by position).
+  cardPosition?: 'above' | 'below';
 }
 
 export const TOUR_STEPS: TourStep[] = [
@@ -27,6 +30,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: 'start',
     copy: 'Every run starts here. Tap Start when you are ready.',
     advance: 'action',
+    cardPosition: 'below', // keep the title and subtitle visible above the ring
   },
   {
     id: 'setup-vibes',
@@ -57,18 +61,25 @@ export const TOUR_STEPS: TourStep[] = [
     advance: 'tap',
   },
   {
+    id: 'active-pills',
+    screen: 'active',
+    target: 'pills',
+    copy: 'Set pace lets you dial in a pace yourself, like on a treadmill. Recalibrate re-reads your steps from scratch, useful if the match feels off or you want to leave a set pace.',
+    advance: 'tap',
+  },
+  {
     id: 'active-lock',
     screen: 'active',
     target: 'lock',
-    copy: 'Tap the lock to hold your pace. Handy on a treadmill, or when you want the music to stay put.',
+    copy: 'The lock holds your current pace so the music stays put until you unlock it.',
     advance: 'tap',
   },
   {
     id: 'active-hold',
     screen: 'active',
     target: 'hold',
-    copy: "Press and hold to end a session. That's the tour!",
-    advance: 'tap',
+    copy: 'Press and hold to end the session. Go ahead, try it.',
+    advance: 'action',
   },
 ];
 

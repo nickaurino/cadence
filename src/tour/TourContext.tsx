@@ -2,8 +2,6 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { TourStep, stepAt, TOUR_STEP_COUNT } from '@/tour/script';
 import { isTourEnabled, setTourEnabled } from '@/storage/store';
 
-export type TourMode = 'real' | 'demo' | null;
-
 interface TourValue {
   ready: boolean; // pending flag loaded from storage
   // pending: the tour should run. Set on onboarding completion and by Replay
@@ -11,15 +9,13 @@ interface TourValue {
   // mid-tour restarts it from the top on the next visit to home.
   pending: boolean;
   running: boolean; // the tour is live right now
-  mode: TourMode; // chosen at the session step: real session or simulated
   stepIndex: number;
   step: TourStep | null; // null when not running or past the last step
-  finished: boolean; // ran past the last step (time for the handoff)
+  finished: boolean; // ran past the last step (time for the final card on home)
   begin: () => void; // home calls this when ready && pending
-  chooseMode: (mode: Exclude<TourMode, null>) => void;
   advance: () => void;
   skip: () => void; // bail out entirely
-  end: () => void; // normal completion (after the handoff)
+  end: () => void; // normal completion (after the final card)
 }
 
 const noop = () => {};
@@ -27,12 +23,10 @@ const TourContext = createContext<TourValue>({
   ready: false,
   pending: false,
   running: false,
-  mode: null,
   stepIndex: 0,
   step: null,
   finished: false,
   begin: noop,
-  chooseMode: noop,
   advance: noop,
   skip: noop,
   end: noop,
@@ -52,7 +46,6 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [pending, setPending] = useState(false);
   const [running, setRunning] = useState(false);
-  const [mode, setMode] = useState<TourMode>(null);
   const [stepIndex, setStepIndex] = useState(0);
 
   useEffect(() => {
@@ -69,17 +62,13 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const begin = () => {
     setStepIndex(0);
-    setMode(null);
     setRunning(true);
   };
-
-  const chooseMode = (m: Exclude<TourMode, null>) => setMode(m);
 
   const advance = () => setStepIndex((i) => i + 1);
 
   const stop = () => {
     setRunning(false);
-    setMode(null);
     setStepIndex(0);
     setPendingPersisted(false);
   };
@@ -100,12 +89,10 @@ export function TourProvider({ children }: { children: ReactNode }) {
         ready,
         pending,
         running,
-        mode,
         stepIndex,
         step,
         finished,
         begin,
-        chooseMode,
         advance,
         skip,
         end,

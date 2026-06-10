@@ -57,14 +57,6 @@ describe('TourProvider (scripted tour)', () => {
     expect(api.finished).toBe(true);
   });
 
-  it('chooseMode records real or demo', async () => {
-    await mount();
-    await act(async () => triggerReplayTour());
-    await act(async () => api.begin());
-    await act(async () => api.chooseMode('demo'));
-    expect(api.mode).toBe('demo');
-  });
-
   it('skip ends the tour and clears pending (no leak into later sessions)', async () => {
     await mount();
     await act(async () => triggerReplayTour());

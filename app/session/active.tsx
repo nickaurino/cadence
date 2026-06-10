@@ -15,7 +15,6 @@ import { PressableScale } from '@/components/PressableScale';
 import { ProgressBar } from '@/components/ProgressBar';
 import { NoMotionState } from '@/components/NoMotionState';
 import { SpotlightOverlay } from '@/components/SpotlightOverlay';
-import { TourHandoff } from '@/components/TourHandoff';
 import { getPlaybackStatus } from '@/music/player';
 import { canReadMotion } from '@/sensors/cadence';
 import { useTourSpotlight } from '@/tour/useTourSpotlight';
@@ -71,11 +70,13 @@ export default function ActiveSession() {
   const heroRef = useRef<View>(null);
   const lockRef = useRef<View>(null);
   const songRef = useRef<View>(null);
+  const pillsRef = useRef<View>(null);
   const holdRef = useRef<View>(null);
   const { tour, step, targetRect } = useTourSpotlight('active', {
     hero: heroRef,
     lock: lockRef,
     song: songRef,
+    pills: pillsRef,
     hold: holdRef,
   });
 
@@ -153,22 +154,24 @@ export default function ActiveSession() {
     };
   }, [trackId]);
 
-  function exitTour(skipped: boolean) {
-    if (skipped) tour.skip();
-    else tour.end();
-    if (isDemo) router.replace('/home'); // demo session only exists for the tour
-  }
-
   async function handleEnd() {
     if (isDemo) {
-      exitTour(false);
+      // Performing the hold IS the final step's action. Advancing past it sets
+      // tour.finished, and home shows the closing card.
+      if (step?.id === 'active-hold') tour.advance();
+      router.replace('/home');
       return;
     }
-    if (tour.running) tour.skip(); // real session ends mid-tour: bail cleanly
+    if (tour.running) tour.skip(); // a real session ending mid-tour bails cleanly
     const engine = engineRef.current;
     const summary = engine.getSummary();
     await engine.stop();
     router.replace({ pathname: '/end', params: { summary: JSON.stringify(summary) } });
+  }
+
+  function handleSkipTour() {
+    tour.skip();
+    if (isDemo) router.replace('/home'); // the demo session only exists for the tour
   }
 
   if (error) {
@@ -329,12 +332,12 @@ export default function ActiveSession() {
           <Text style={styles.noMusicLabel}>Enable Apple Music for playback control</Text>
         )}
 
-        <View style={styles.pillRow}>
-          <PressableScale style={styles.pill} onPress={() => setPaceModal(true)}>
+        <View ref={pillsRef} collapsable={false} style={styles.pillRow}>
+          <PressableScale style={styles.pill} onPress={() => { if (!isDemo) setPaceModal(true); }}>
             <Text style={styles.secondaryBtnText}>Set pace</Text>
           </PressableScale>
-          {!isDemo && motionOk !== false && (
-            <PressableScale style={styles.pill} onPress={() => engine.recalibrate()}>
+          {(isDemo || motionOk !== false) && (
+            <PressableScale style={styles.pill} onPress={() => { if (!isDemo) engine.recalibrate(); }}>
               <Text style={styles.secondaryBtnText}>↺  Recalibrate</Text>
             </PressableScale>
           )}
@@ -357,18 +360,8 @@ export default function ActiveSession() {
           targetRect={targetRect}
           copy={step.copy}
           onDismiss={step.advance === 'tap' ? tour.advance : undefined}
-          onSkip={() => exitTour(true)}
-          passthrough
-        />
-      )}
-
-      {tour.finished && (
-        <TourHandoff
-          onSettings={() => {
-            exitTour(false);
-            router.push('/settings');
-          }}
-          onLater={() => exitTour(false)}
+          onSkip={handleSkipTour}
+          cardPosition={step.cardPosition}
         />
       )}
     </SafeAreaView>

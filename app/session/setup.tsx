@@ -7,7 +7,6 @@ import { colors } from '@/theme/colors';
 import { SettingsButton } from '@/components/SettingsButton';
 import { PressableScale } from '@/components/PressableScale';
 import { SpotlightOverlay } from '@/components/SpotlightOverlay';
-import { TourModeChoice } from '@/components/TourModeChoice';
 import { useTourSpotlight } from '@/tour/useTourSpotlight';
 
 const VIBES: { id: Vibe; label: string }[] = [
@@ -20,21 +19,21 @@ const VIBES: { id: Vibe; label: string }[] = [
 
 export default function SessionSetup() {
   const [vibe, setVibe] = useState<Vibe>('mix');
-  const [showModeChoice, setShowModeChoice] = useState(false);
 
   const vibesRef = useRef<View>(null);
   const goRef = useRef<View>(null);
   const { tour, step, targetRect } = useTourSpotlight('setup', { vibes: vibesRef, go: goRef });
 
-  function startSession(demo: boolean) {
-    if (step?.id === 'setup-go') tour.advance();
-    router.push({ pathname: '/session/active', params: demo ? { vibe, demo: '1' } : { vibe } });
-  }
-
   function handleStart() {
-    // During the tour, "Let's go" first offers a real or simulated session.
-    if (step?.id === 'setup-go') setShowModeChoice(true);
-    else startSession(false);
+    // During the tour, "Let's go" advances the script and opens a SIMULATED
+    // session (canned state, no engine or music) so the walkthrough works
+    // anywhere, no walking required.
+    if (step?.id === 'setup-go') {
+      tour.advance();
+      router.push({ pathname: '/session/active', params: { vibe, demo: '1' } });
+    } else {
+      router.push({ pathname: '/session/active', params: { vibe } });
+    }
   }
 
   return (
@@ -72,28 +71,13 @@ export default function SessionSetup() {
 
       <View style={styles.spacer} />
 
-      {step && targetRect && !showModeChoice && (
+      {step && targetRect && (
         <SpotlightOverlay
           targetRect={targetRect}
           copy={step.copy}
           onDismiss={step.advance === 'tap' ? tour.advance : undefined}
           onSkip={tour.skip}
-          passthrough
-        />
-      )}
-
-      {showModeChoice && (
-        <TourModeChoice
-          onReal={() => {
-            setShowModeChoice(false);
-            tour.chooseMode('real');
-            startSession(false);
-          }}
-          onDemo={() => {
-            setShowModeChoice(false);
-            tour.chooseMode('demo');
-            startSession(true);
-          }}
+          cardPosition={step.cardPosition}
         />
       )}
     </SafeAreaView>
@@ -118,14 +102,15 @@ const styles = StyleSheet.create({
   vibeBtnTextActive: { color: colors.accent },
   vibeBtn: { borderRadius: 50, borderWidth: 1.5, borderColor: colors.border, paddingVertical: 12, paddingHorizontal: 22 },
   vibeBtnActive: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
-  goWrap: { alignSelf: 'stretch' },
+  // The 44px gap lives on the wrapper, NOT the button: the tour measures the
+  // wrapper for the spotlight, and a margin inside it doubled the highlight height.
+  goWrap: { alignSelf: 'stretch', marginTop: 44 },
   startBtn: {
     backgroundColor: colors.accent,
     borderRadius: 50,
     paddingVertical: 17,
     alignItems: 'center',
     alignSelf: 'stretch',
-    marginTop: 44,
     shadowColor: colors.accent,
     shadowRadius: 16,
     shadowOpacity: 0.4,

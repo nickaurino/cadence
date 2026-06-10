@@ -18,18 +18,23 @@ interface Props {
   // safe-area offset). null = full dark overlay with no cutout.
   targetRect: TargetRect | null;
   copy?: string;
-  onDismiss?: () => void; // tap "Got it" to dismiss this coachmark
-  onSkip?: () => void; // "Skip tour" — marks all remaining seen
-  // When true the panels let touches pass through so the run isn't blocked
-  // (informational coachmarks). One animation driver per view; this overlay does
-  // not animate, to stay safe alongside CadenceRing/PressableScale.
+  onDismiss?: () => void; // tap "Got it" to advance this step
+  onSkip?: () => void; // "Skip tour" bails out of the whole tour
+  // The dark panels BLOCK touches by default, so during the tour only the spotlit
+  // target (and the overlay's own buttons) are pressable. Pass true to let
+  // touches through for purely informational overlays. This overlay does not
+  // animate (one animation driver per view; see CadenceRing/PressableScale).
   passthrough?: boolean;
+  // Force the copy card above/below the target; default picks by position.
+  cardPosition?: 'above' | 'below';
 }
 
 // Ported from hobby-randomizer's spotlight: a 4-panel dark cutout around a
 // measured element plus a floating copy card. No SVG, no new dependencies.
-export function SpotlightOverlay({ targetRect, copy, onDismiss, onSkip, passthrough = false }: Props) {
-  const cardBelow = !targetRect || targetRect.y < SCREEN_H * 0.45;
+export function SpotlightOverlay({ targetRect, copy, onDismiss, onSkip, passthrough = false, cardPosition }: Props) {
+  const cardBelow = cardPosition
+    ? cardPosition === 'below'
+    : !targetRect || targetRect.y < SCREEN_H * 0.45;
   const cardStyle = targetRect
     ? cardBelow
       ? { top: targetRect.y + targetRect.height + PAD + 16 }
@@ -103,10 +108,11 @@ const styles = StyleSheet.create({
   copy: { color: colors.text, fontSize: 16, lineHeight: 24 },
   dismissBtn: { alignSelf: 'flex-end', backgroundColor: colors.accent, paddingVertical: 9, paddingHorizontal: 20, borderRadius: 12 },
   dismissText: { color: colors.onAccent, fontWeight: '700', fontSize: 15 },
+  // Top-left so it never sits over the Settings gear (top-right).
   skip: {
     position: 'absolute',
     top: 56,
-    right: 24,
+    left: 24,
     paddingVertical: 6,
     paddingHorizontal: 14,
     backgroundColor: colors.surface,
