@@ -71,16 +71,29 @@ export class CadenceDetector {
   private _timer: ReturnType<typeof setInterval> | null = null;
   private _buffer: StepSample[] = [];
   private _onCadence: CadenceCallback | null = null;
+  // Step accounting that survives buffer clears and resume:
+  // _stepsBase = steps carried over from before this subscription (resume seed);
+  // _lastCumulative = latest cumulative-since-subscription sample, latched
+  // outside the buffer so recalibrate() (which clears the buffer) can't lose it.
+  private _stepsBase = 0;
+  private _lastCumulative = 0;
 
   async isAvailable(): Promise<boolean> {
     return Pedometer.isAvailableAsync();
   }
 
   start(onCadence: CadenceCallback): void {
+    // A second start() (double-tap, fast resume) must not stack a second
+    // pedometer subscription + interval: that leaks AND doubles cadence events.
+    this._subscription?.remove();
+    if (this._timer) clearInterval(this._timer);
+
     this._onCadence = onCadence;
     this._buffer = [];
+    this._lastCumulative = 0; // new subscription counts from zero
 
     this._subscription = Pedometer.watchStepCount(({ steps }) => {
+      this._lastCumulative = steps;
       this._buffer.push({ t: Date.now(), steps });
     });
 
@@ -99,9 +112,15 @@ export class CadenceDetector {
     if (cadence !== null && this._onCadence) this._onCadence(cadence);
   }
 
-  // Cumulative steps since the session started (latest pedometer sample).
+  // Total session steps: the resume-carried base plus the latched cumulative
+  // count from this subscription. Survives recalibrate()'s buffer clear.
   totalSteps(): number {
-    return this._buffer.length ? this._buffer[this._buffer.length - 1].steps : 0;
+    return this._stepsBase + this._lastCumulative;
+  }
+
+  // Carry steps recorded before a kill/resume into this subscription's total.
+  seedStepsBase(steps: number): void {
+    this._stepsBase = steps;
   }
 
   recalibrate(): void {
@@ -130,5 +149,7 @@ export class CadenceDetector {
     this._timer = null;
     this._buffer = [];
     this._onCadence = null;
+    this._stepsBase = 0;
+    this._lastCumulative = 0;
   }
 }

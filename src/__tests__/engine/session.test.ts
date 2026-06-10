@@ -17,6 +17,8 @@ jest.mock('@/sensors/cadence', () => ({
     stop: jest.fn(),
     recalibrate: jest.fn(),
     totalSteps: jest.fn().mockReturnValue(820),
+    seedStepsBase: jest.fn(),
+    seedFromHistory: jest.fn().mockResolvedValue(undefined),
   })),
 }));
 
@@ -49,6 +51,7 @@ jest.mock('@/music/player', () => ({
     mockTrackHolder.cb = cb;
     return { remove: jest.fn() };
   }),
+  getPlaybackStatus: jest.fn().mockResolvedValue({ position: 0, duration: null, isPlaying: true }),
   disconnect: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -543,4 +546,104 @@ test('_persist(true) writes once; an immediate non-forced call is throttled', as
 
   (engine as any)._persist();
   expect(savePersisted).toHaveBeenCalledTimes(1); // throttled
+});
+
+// --- Race-condition regressions (epoch guard) ---
+
+describe('stale-fetch protection', () => {
+  test('a slow cadence fetch resolving after setManualPace cannot overwrite the manual queue', async () => {
+    let t = 1000;
+    const nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => t);
+    const engine = await startAndMove(); // managed 170
+    (playQueue as jest.Mock).mockClear();
+
+    // Slow fetch for a cadence drift to 185.
+    let resolveSlow!: (tracks: MusicTrack[]) => void;
+    (getRecommendations as jest.Mock).mockImplementationOnce(
+      () => new Promise((r) => (resolveSlow = r))
+    );
+    mockHolder.cb!(185);
+    t += 9000; // past sustain
+    mockHolder.cb!(185); // commit starts, fetch hangs
+    await flush();
+
+    // User dials a manual pace while the 185 fetch is in flight.
+    const manualTracks = [{ id: 'm1', name: 'Manual', artist: 'M', albumArtUrl: '', tempo: 200 }];
+    (getRecommendations as jest.Mock).mockResolvedValueOnce(manualTracks);
+    await engine.setManualPace(200);
+    await flush();
+    expect(playQueue).toHaveBeenLastCalledWith(['m1']);
+
+    // The stale 185 fetch finally resolves — it must NOT touch the queue.
+    resolveSlow([{ id: 'stale', name: 'Stale', artist: 'S', albumArtUrl: '', tempo: 185 }]);
+    await flush();
+    expect(playQueue).toHaveBeenLastCalledWith(['m1']); // unchanged
+    expect(engine.getState().currentTrack?.id).toBe('m1');
+    expect(engine.getState().managedCadence).toBe(200);
+    nowSpy.mockRestore();
+  });
+
+  test('stop() during an in-flight playQueue does not crash and pauses the late playback', async () => {
+    const engine = new SessionEngine();
+    await engine.start({ vibe: 'hype' as Vibe });
+
+    let resolvePlay!: () => void;
+    (playQueue as jest.Mock).mockImplementationOnce(() => new Promise<void>((r) => (resolvePlay = r)));
+    mockHolder.cb!(170); // first reading -> fetch -> playQueue hangs
+    await flush();
+
+    await engine.stop(); // session ends while playQueue is in flight
+    resolvePlay(); // native call lands after stop
+    await flush();
+
+    expect(pause).toHaveBeenCalled(); // late playback start is undone
+  });
+
+  test('a stale replenish resolving after a pace change does not append old-tempo tracks', async () => {
+    let t = 1000;
+    const nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => t);
+    const engine = await startAndMove(); // queue t1,t2 @170
+
+    // Replenish hangs.
+    let resolveReplenish!: (tracks: MusicTrack[]) => void;
+    (getRecommendations as jest.Mock).mockImplementationOnce(
+      () => new Promise((r) => (resolveReplenish = r))
+    );
+    mockTrackHolder.cb!({ trackId: 't2', title: 'Song B' }); // advance to last -> replenish kicks off
+    await flush();
+
+    // Manual pace change reloads the queue while replenish is in flight.
+    const newTracks = [{ id: 'n1', name: 'New', artist: 'N', albumArtUrl: '', tempo: 200 }];
+    (getRecommendations as jest.Mock).mockResolvedValueOnce(newTracks);
+    await engine.setManualPace(200);
+    await flush();
+
+    // Old replenish resolves with 170-tempo tracks: must be dropped.
+    resolveReplenish([{ id: 'old9', name: 'Old', artist: 'O', albumArtUrl: '', tempo: 170 }]);
+    await flush();
+    expect(engine.getQueuedTrackIds()).not.toContain('old9');
+    expect(queueTrack).not.toHaveBeenCalledWith('old9');
+    nowSpy.mockRestore();
+  });
+});
+
+describe('empty-fetch resilience', () => {
+  test('an empty fetch on a pace change keeps the queue and reverts managed cadence', async () => {
+    let t = 1000;
+    const nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => t);
+    const engine = await startAndMove(); // managed 170, queue t1,t2
+    (playQueue as jest.Mock).mockClear();
+
+    (getRecommendations as jest.Mock).mockResolvedValueOnce([]); // network blip / no matches
+    mockHolder.cb!(185);
+    t += 9000;
+    mockHolder.cb!(185);
+    await flush();
+
+    expect(playQueue).not.toHaveBeenCalled(); // old queue kept playing
+    expect(engine.getState().currentTrack?.id).toBe('t1');
+    expect(engine.getState().managedCadence).toBe(170); // reverted -> drift logic will retry
+    expect(engine.getState().notice).toContain("Couldn't find songs");
+    nowSpy.mockRestore();
+  });
 });

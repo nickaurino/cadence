@@ -37,9 +37,13 @@ export async function resolveFeatures(
   if (key) {
     const cached = await AsyncStorage.getItem(key);
     if (cached !== null) {
-      const value = cached === MISS ? null : (JSON.parse(cached) as TrackFeatures);
-      memoryCache.set(key, value);
-      return value;
+      try {
+        const value = cached === MISS ? null : (JSON.parse(cached) as TrackFeatures);
+        memoryCache.set(key, value);
+        return value;
+      } catch {
+        // corrupted cache entry: fall through and re-analyze
+      }
     }
   }
 
@@ -52,7 +56,13 @@ export async function resolveFeatures(
 
   if (key) {
     memoryCache.set(key, result);
-    await AsyncStorage.setItem(key, result === null ? MISS : JSON.stringify(result));
+    // A failed cache write must not reject the lookup — one storage hiccup would
+    // otherwise nuke the whole recommendation batch via Promise rejection.
+    try {
+      await AsyncStorage.setItem(key, result === null ? MISS : JSON.stringify(result));
+    } catch {
+      // memory cache still holds it for this session
+    }
   }
 
   return result;

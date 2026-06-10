@@ -48,10 +48,14 @@ beforeEach(() => {
 });
 
 describe('savePersisted', () => {
-  it('writes the JSON string under the active session key', async () => {
+  it('writes the JSON string under the active session key, stamped with savedAt', async () => {
     const session = makeSession();
     await savePersisted(session);
-    expect(AsyncStorage.setItem).toHaveBeenCalledWith(KEY, JSON.stringify(session));
+    const [key, raw] = (AsyncStorage.setItem as jest.Mock).mock.calls[0];
+    expect(key).toBe(KEY);
+    const written = JSON.parse(raw);
+    expect(typeof written.savedAt).toBe('number');
+    expect({ ...written, savedAt: undefined }).toEqual({ ...session, savedAt: undefined });
   });
 });
 
@@ -77,6 +81,17 @@ describe('loadPersisted', () => {
     (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(stale);
     await expect(loadPersisted()).resolves.toBeNull();
   });
+
+  it('returns null for a versioned-but-malformed snapshot (truncated write)', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(JSON.stringify({ version: 1 }));
+    await expect(loadPersisted()).resolves.toBeNull();
+  });
+
+  it('returns null when tracks is not an array', async () => {
+    const bad = JSON.stringify({ ...makeSession(), tracks: 'oops' });
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(bad);
+    await expect(loadPersisted()).resolves.toBeNull();
+  });
 });
 
 describe('clearPersisted', () => {
@@ -87,22 +102,32 @@ describe('clearPersisted', () => {
 });
 
 describe('shouldResume', () => {
-  const now = 10_000_000;
+  const now = 100_000_000;
 
-  it('is true for a fresh snapshot', () => {
-    expect(shouldResume(makeSession({ startedAt: now - 1000 }), now)).toBe(true);
+  it('is true for a freshly-saved snapshot', () => {
+    expect(shouldResume(makeSession({ savedAt: now - 1000 }), now)).toBe(true);
   });
 
   it('is false for null', () => {
     expect(shouldResume(null, now)).toBe(false);
   });
 
-  it('is false for a snapshot older than the max age', () => {
-    const session = makeSession({ startedAt: now - RESUME_MAX_AGE_MS - 1 });
-    expect(shouldResume(session, now)).toBe(false);
+  it('staleness keys off savedAt, not startedAt: a long run backgrounded briefly resumes', () => {
+    const longRun = makeSession({ startedAt: now - RESUME_MAX_AGE_MS - 1, savedAt: now - 30_000 });
+    expect(shouldResume(longRun, now)).toBe(true);
   });
 
-  it('is false for a future startedAt', () => {
-    expect(shouldResume(makeSession({ startedAt: now + 1000 }), now)).toBe(false);
+  it('is false when the snapshot was saved longer ago than the max age', () => {
+    const stale = makeSession({ startedAt: now - 1000, savedAt: now - RESUME_MAX_AGE_MS - 1 });
+    expect(shouldResume(stale, now)).toBe(false);
+  });
+
+  it('falls back to startedAt for snapshots without savedAt (forward-compat)', () => {
+    expect(shouldResume(makeSession({ startedAt: now - 1000 }), now)).toBe(true);
+    expect(shouldResume(makeSession({ startedAt: now - RESUME_MAX_AGE_MS - 1 }), now)).toBe(false);
+  });
+
+  it('is false for a future timestamp (clock change guard)', () => {
+    expect(shouldResume(makeSession({ savedAt: now + 1000 }), now)).toBe(false);
   });
 });

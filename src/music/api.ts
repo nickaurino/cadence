@@ -54,15 +54,34 @@ async function gatherCandidates(terms: string[], page: number): Promise<RawSong[
 // Resolves features for each candidate, keeps the ones whose BPM matches the
 // target cadence (allowing half/double-time), and sorts by composite groove
 // score (BPM closeness + pulse clarity + tempo stability), best first.
+// Bounded concurrency: each cold candidate kicks off native audio analysis of a
+// 30s clip; running all ~75 at once spikes CPU/memory. A small worker pool keeps
+// throughput without the spike.
+const ANALYSIS_CONCURRENCY = 5;
+
+async function mapWithPool<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 async function matchSongs(
   songs: RawSong[],
   targetBpm: number,
   provider: FeatureProvider,
   options: MatchOptions
 ): Promise<MusicTrack[]> {
-  const withFeatures = await Promise.all(
-    songs.map(async (song) => ({ song, features: await resolveFeatures(song, provider) }))
-  );
+  const withFeatures = await mapWithPool(songs, ANALYSIS_CONCURRENCY, async (song) => ({
+    song,
+    features: await resolveFeatures(song, provider),
+  }));
 
   return withFeatures
     .filter(
