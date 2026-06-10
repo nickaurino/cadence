@@ -14,6 +14,10 @@ type RefMap = Partial<Record<TourTarget, RefObject<View | null>>>;
 export function useTourSpotlight(screen: TourScreen, refs: RefMap) {
   const tour = useTour();
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
+  // true once BOTH measure attempts fail (a real failure, not the brief 1-frame
+  // measuring window). Lets the screen show a centered card fallback only then,
+  // so the normal window never flashes a wrongly-positioned card.
+  const [failed, setFailed] = useState(false);
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -28,21 +32,24 @@ export function useTourSpotlight(screen: TourScreen, refs: RefMap) {
   useEffect(() => {
     // Clear immediately on every step change so a stale cutout from the previous
     // step never lingers (visually or as a touch hole). While targetRect is null
-    // the screen renders the overlay in full-dark mode, which keeps everything
-    // blocked AND keeps Got it/Skip available even if measurement fails outright.
+    // and not failed, the screen blocks with a plain dark panel and shows NO card
+    // (no flash); on outright failure it falls back to a centered card.
     setTargetRect(null);
+    setFailed(false);
     if (!step) return;
     let retry: ReturnType<typeof setTimeout> | null = null;
     const measure = (attempt: number) => {
       const node = refs[step.target]?.current;
       if (!node) {
         if (attempt === 0) retry = setTimeout(() => measure(1), 350);
+        else if (mounted.current) setFailed(true);
         return;
       }
       node.measure((_x, _y, width, height, pageX, pageY) => {
         if (!mounted.current) return;
         if (width === 0 && height === 0) {
           if (attempt === 0) retry = setTimeout(() => measure(1), 350);
+          else setFailed(true);
           return;
         }
         setTargetRect({ x: pageX, y: pageY, width, height });
@@ -56,5 +63,5 @@ export function useTourSpotlight(screen: TourScreen, refs: RefMap) {
     };
   }, [step?.id]);
 
-  return { tour, step, targetRect };
+  return { tour, step, targetRect, failed };
 }

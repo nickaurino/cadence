@@ -75,7 +75,7 @@ export default function ActiveSession() {
   const songRef = useRef<View>(null);
   const pillsRef = useRef<View>(null);
   const holdRef = useRef<View>(null);
-  const { tour, step, targetRect } = useTourSpotlight('active', {
+  const { tour, step, targetRect, failed } = useTourSpotlight('active', {
     hero: heroRef,
     lock: lockRef,
     song: songRef,
@@ -376,6 +376,7 @@ export default function ActiveSession() {
           onDismiss={step.advance === 'tap' ? () => tour.advanceFrom(step.id) : undefined}
           onSkip={handleSkipTour}
           cardPosition={step.cardPosition}
+          cardVisible={!!targetRect || failed}
         />
       )}
     </SafeAreaView>
@@ -391,8 +392,8 @@ const styles = StyleSheet.create({
   dotLocked: { backgroundColor: colors.accent },
   dotCalibrating: { backgroundColor: colors.muted },
   statusText: { color: colors.muted, fontSize: 14 },
-  messageSlot: { height: 32, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
-  msgRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  messageSlot: { height: 32, marginTop: 8, width: '100%', alignItems: 'center', justifyContent: 'center' },
+  msgRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   msgMuted: { color: colors.muted, fontSize: 14, textAlign: 'center', paddingHorizontal: 16 },
   msgAccent: { color: colors.accent, fontSize: 14, textAlign: 'center', paddingHorizontal: 16 },
   songArea: { minHeight: 72, width: '100%', justifyContent: 'center', marginTop: 10 },

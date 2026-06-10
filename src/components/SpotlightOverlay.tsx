@@ -28,11 +28,14 @@ interface Props {
   passthrough?: boolean;
   // Force the copy card above/below the target; default picks by position.
   cardPosition?: 'above' | 'below';
+  // Whether to render the copy card. Defaults to true; the tour passes false
+  // during the brief unmeasured window so a center-parked card never flashes.
+  cardVisible?: boolean;
 }
 
 // Ported from hobby-randomizer's spotlight: a 4-panel dark cutout around a
 // measured element plus a floating copy card. No SVG, no new dependencies.
-export function SpotlightOverlay({ targetRect, copy, onDismiss, onSkip, passthrough = false, cardPosition }: Props) {
+export function SpotlightOverlay({ targetRect, copy, onDismiss, onSkip, passthrough = false, cardPosition, cardVisible = true }: Props) {
   const insets = useSafeAreaInsets();
   const cardBelow = cardPosition
     ? cardPosition === 'below'
@@ -76,7 +79,7 @@ export function SpotlightOverlay({ targetRect, copy, onDismiss, onSkip, passthro
         />
       )}
 
-      {copy ? (
+      {cardVisible && copy ? (
         <View style={[styles.card, cardStyle]}>
           <Text style={styles.copy}>{copy}</Text>
           {onDismiss && (

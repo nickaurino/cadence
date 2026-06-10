@@ -13,7 +13,7 @@ import { useTourSpotlight } from '@/tour/useTourSpotlight';
 export default function Home() {
   const startRef = useRef<View>(null);
   const navigating = useRef(false);
-  const { tour, step, targetRect } = useTourSpotlight('home', { start: startRef });
+  const { tour, step, targetRect, failed } = useTourSpotlight('home', { start: startRef });
 
   // The guided tour starts here whenever it's pending (first launch after
   // onboarding, or Replay tour).
@@ -55,6 +55,7 @@ export default function Home() {
           copy={step.copy}
           onSkip={tour.skip}
           cardPosition={step.cardPosition}
+          cardVisible={!!targetRect || failed}
         />
       )}
 

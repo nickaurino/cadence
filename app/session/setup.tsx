@@ -23,7 +23,7 @@ export default function SessionSetup() {
 
   const vibesRef = useRef<View>(null);
   const goRef = useRef<View>(null);
-  const { tour, step, targetRect } = useTourSpotlight('setup', { vibes: vibesRef, go: goRef });
+  const { tour, step, targetRect, failed } = useTourSpotlight('setup', { vibes: vibesRef, go: goRef });
 
   function handleStart() {
     if (navigating.current) return; // debounce double-taps (a second push would desync the tour)
@@ -83,6 +83,7 @@ export default function SessionSetup() {
           onDismiss={step.advance === 'tap' ? () => tour.advanceFrom(step.id) : undefined}
           onSkip={tour.skip}
           cardPosition={step.cardPosition}
+          cardVisible={!!targetRect || failed}
         />
       )}
     </SafeAreaView>
