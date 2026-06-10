@@ -21,29 +21,47 @@ enum TempoAnalyzer {
   // Number of overlapping windows used to gauge tempo stability across a clip.
   private static let stabilityWindowCount = 4
 
+  // A preview clip is ~30s of AAC (~1MB); anything much larger isn't a preview.
+  private static let maxDownloadBytes = 5_000_000
+  // Decode at most ~35s of audio regardless of what the file claims.
+  private static let maxDecodeSeconds = 35.0
+
   static func features(forPreviewURL urlString: String) async throws -> TrackFeatures? {
     guard let url = URL(string: urlString) else { return nil }
 
-    let (data, _) = try await URLSession.shared.data(from: url)
+    // "Undeterminable" is the contract for anything that isn't analyzable audio:
+    // an expired/403 preview URL returns an HTML error page, which must surface
+    // as nil to JS, not as a decode throw.
+    let (data, response) = try await URLSession.shared.data(from: url)
+    guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+          !data.isEmpty, data.count <= maxDownloadBytes else {
+      return nil
+    }
+
     let tmp = FileManager.default.temporaryDirectory
       .appendingPathComponent(UUID().uuidString + ".m4a")
     try data.write(to: tmp)
     defer { try? FileManager.default.removeItem(at: tmp) }
 
-    let (samples, sampleRate) = try monoSamples(from: tmp)
-    return estimateFeatures(samples: samples, sampleRate: sampleRate)
+    do {
+      let (samples, sampleRate) = try monoSamples(from: tmp)
+      return estimateFeatures(samples: samples, sampleRate: sampleRate)
+    } catch {
+      return nil // not decodable audio = undeterminable, per the JS contract
+    }
   }
 
-  // Reads an audio file into a single mono Float channel.
+  // Reads an audio file into a single mono Float channel (capped in length).
   private static func monoSamples(from url: URL) throws -> ([Float], Double) {
     let file = try AVAudioFile(forReading: url)
     let format = file.processingFormat
-    let frameCount = AVAudioFrameCount(file.length)
+    let maxFrames = AVAudioFramePosition(format.sampleRate * maxDecodeSeconds)
+    let frameCount = AVAudioFrameCount(min(file.length, maxFrames))
     guard frameCount > 0,
           let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else {
       throw AnalyzerError.decode
     }
-    try file.read(into: buffer)
+    try file.read(into: buffer, frameCount: frameCount)
 
     let channels = Int(format.channelCount)
     let length = Int(buffer.frameLength)
@@ -80,15 +98,16 @@ enum TempoAnalyzer {
     var imagp = [Float](repeating: 0, count: halfN)
     var prevMag = [Float](repeating: 0, count: halfN)
     var flux: [Float] = []
+    // Hoisted out of the loop: ~2,500 iterations would otherwise reallocate both.
+    var windowed = [Float](repeating: 0, count: frameSize)
+    var mag = [Float](repeating: 0, count: halfN)
 
     var pos = 0
     while pos + frameSize <= samples.count {
-      var windowed = [Float](repeating: 0, count: frameSize)
       samples.withUnsafeBufferPointer { sp in
         vDSP_vmul(sp.baseAddress! + pos, 1, window, 1, &windowed, 1, vDSP_Length(frameSize))
       }
 
-      var mag = [Float](repeating: 0, count: halfN)
       realp.withUnsafeMutableBufferPointer { rp in
         imagp.withUnsafeMutableBufferPointer { ip in
           var split = DSPSplitComplex(realp: rp.baseAddress!, imagp: ip.baseAddress!)
@@ -126,8 +145,11 @@ enum TempoAnalyzer {
     let maxLag = min(flux.count - 1, Int((60.0 / minBpm) * frameRate))
     guard maxLag > minLag else { return nil }
 
-    // Autocorrelation over the lag range. Keep every value so we can measure the
-    // dominant peak's prominence (pulse clarity), not just find the max.
+    // Autocorrelation over the lag range, normalized by overlap count: shorter
+    // lags sum more terms, so without normalization the peak is biased toward
+    // faster tempos (the octave errors the tight BPM range tries to avoid).
+    // Keep every value so we can measure the dominant peak's prominence
+    // (pulse clarity), not just find the max.
     var corrByLag = [Float](repeating: 0, count: maxLag - minLag + 1)
     var bestLag = -1
     var bestCorr = -Float.greatestFiniteMagnitude
@@ -136,6 +158,7 @@ enum TempoAnalyzer {
       flux.withUnsafeBufferPointer { fp in
         vDSP_dotpr(fp.baseAddress!, 1, fp.baseAddress! + lag, 1, &corr, vDSP_Length(flux.count - lag))
       }
+      corr /= Float(flux.count - lag)
       corrByLag[lag - minLag] = corr
       if corr > bestCorr {
         bestCorr = corr
@@ -144,7 +167,22 @@ enum TempoAnalyzer {
     }
     guard bestLag > 0 else { return nil }
 
-    let bpm = (60.0 * frameRate / Double(bestLag) * 10).rounded() / 10
+    // Parabolic interpolation around the peak: at ~86 fps the raw lag grid is
+    // ±4 BPM at 200 BPM, coarser than the matcher's tolerance budget.
+    var refinedLag = Double(bestLag)
+    let peakIdx = bestLag - minLag
+    if peakIdx > 0 && peakIdx < corrByLag.count - 1 {
+      let y0 = Double(corrByLag[peakIdx - 1])
+      let y1 = Double(corrByLag[peakIdx])
+      let y2 = Double(corrByLag[peakIdx + 1])
+      let denom = y0 - 2 * y1 + y2
+      if abs(denom) > 1e-12 {
+        let delta = 0.5 * (y0 - y2) / denom
+        if abs(delta) <= 1 { refinedLag += delta }
+      }
+    }
+
+    let bpm = (60.0 * frameRate / refinedLag * 10).rounded() / 10
     let pulseClarity = clarityScore(corrByLag: corrByLag, bestCorr: bestCorr)
     let tempoStability = stabilityScore(
       flux: flux, minLag: minLag, maxLag: maxLag, globalLag: bestLag
@@ -190,6 +228,7 @@ enum TempoAnalyzer {
         for lag in minLag...maxLag {
           var corr: Float = 0
           vDSP_dotpr(base, 1, base + lag, 1, &corr, vDSP_Length(windowLen - lag))
+          corr /= Float(windowLen - lag) // same per-lag normalization as the global pass
           if corr > bestCorr {
             bestCorr = corr
             bestLag = lag

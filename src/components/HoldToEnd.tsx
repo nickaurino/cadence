@@ -56,6 +56,9 @@ export function HoldToEnd({
   };
 
   const handlePressIn = () => {
+    // A new hold is a fresh attempt: if a previous fire's onEnd never navigated
+    // away (error path), the button must not be permanently dead.
+    firedRef.current = false;
     setHeld(true);
     haptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
     Animated.timing(progress, {

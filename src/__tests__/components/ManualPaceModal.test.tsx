@@ -25,13 +25,13 @@ describe('ManualPaceModal', () => {
     expect(onConfirm).toHaveBeenCalledWith(180);
   });
 
-  it('clamps scrolling past the max to the top of the range', () => {
+  it('clamps scrolling past the max to the cadence ceiling (guard rails)', () => {
     const onConfirm = jest.fn();
     render(<ManualPaceModal visible onClose={jest.fn()} onConfirm={onConfirm} />);
 
-    scrollTo(300); // past MAX (250)
-    fireEvent.press(screen.getByText('Set 250 spm'));
+    scrollTo(300); // far past MAX (CADENCE_CEILING = 240)
+    fireEvent.press(screen.getByText('Set 240 spm'));
 
-    expect(onConfirm).toHaveBeenCalledWith(250);
+    expect(onConfirm).toHaveBeenCalledWith(240);
   });
 });

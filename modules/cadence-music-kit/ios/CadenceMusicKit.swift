@@ -5,7 +5,10 @@ import Combine
 
 public final class CadenceMusicKitModule: Module {
   private var cancellables = Set<AnyCancellable>()
-  private var lastTrackId: String?
+  // Dedupe key for track-change events. The queue ENTRY id (unique per queue
+  // slot), not the catalog id: the same song appearing twice in a queue, or a
+  // replay of the song that just ended, is a real track change.
+  private var lastEntryId: String?
 
   public func definition() -> ModuleDefinition {
     Name("CadenceMusicKit")
@@ -18,7 +21,7 @@ public final class CadenceMusicKitModule: Module {
 
     OnStopObserving {
       self.cancellables.removeAll()
-      self.lastTrackId = nil
+      self.lastEntryId = nil
     }
 
     AsyncFunction("authorize") { () async -> Bool in
@@ -61,11 +64,17 @@ public final class CadenceMusicKitModule: Module {
       ]
     }
 
+    // SystemMusicPlayer wraps MPMusicPlayerController, whose state is
+    // documented main-thread-only; Expo AsyncFunction closures run on a
+    // background queue, so every player touch hops to the main actor.
+
     AsyncFunction("playTrack") { (trackId: String) async throws in
       let song = try await Self.fetchSong(trackId)
-      let player = SystemMusicPlayer.shared
-      player.queue = [song]
-      try await player.play()
+      await MainActor.run {
+        self.lastEntryId = nil // a fresh queue may start on the same catalog id
+        SystemMusicPlayer.shared.queue = [song]
+      }
+      try await SystemMusicPlayer.shared.play()
     }
 
     AsyncFunction("queueTrack") { (trackId: String) async throws in
@@ -73,8 +82,8 @@ public final class CadenceMusicKitModule: Module {
       try await SystemMusicPlayer.shared.queue.insert(song, position: .tail)
     }
 
-    AsyncFunction("pause") {
-      SystemMusicPlayer.shared.pause()
+    AsyncFunction("pause") { () async in
+      await MainActor.run { SystemMusicPlayer.shared.pause() }
     }
 
     AsyncFunction("resume") { () async throws in
@@ -83,9 +92,11 @@ public final class CadenceMusicKitModule: Module {
 
     AsyncFunction("playQueue") { (trackIds: [String]) async throws in
       let songs = try await Self.fetchSongs(trackIds)
-      let player = SystemMusicPlayer.shared
-      player.queue = SystemMusicPlayer.Queue(for: songs)
-      try await player.play()
+      await MainActor.run {
+        self.lastEntryId = nil // a fresh queue may start on the same catalog id
+        SystemMusicPlayer.shared.queue = SystemMusicPlayer.Queue(for: songs)
+      }
+      try await SystemMusicPlayer.shared.play()
     }
 
     AsyncFunction("skipToNext") { () async throws in
@@ -99,25 +110,30 @@ public final class CadenceMusicKitModule: Module {
     // Current playback position/length for the song progress bar (display only —
     // the system player can't be reliably seeked, so there's no scrub). Position
     // from the MusicKit player's playbackTime; duration from its current song.
-    AsyncFunction("getPlaybackStatus") { () -> [String: Any?] in
-      let player = SystemMusicPlayer.shared
-      var duration: TimeInterval? = nil
-      if case .song(let song)? = player.queue.currentEntry?.item {
-        duration = song.duration
+    // Polled twice a second by JS, so main-thread access matters most here.
+    AsyncFunction("getPlaybackStatus") { () async -> [String: Any?] in
+      await MainActor.run {
+        let player = SystemMusicPlayer.shared
+        var duration: TimeInterval? = nil
+        if case .song(let song)? = player.queue.currentEntry?.item {
+          duration = song.duration
+        }
+        return [
+          "position": player.playbackTime,
+          "duration": duration,
+          "isPlaying": player.state.playbackStatus == .playing,
+        ]
       }
-      return [
-        "position": player.playbackTime,
-        "duration": duration,
-        "isPlaying": player.state.playbackStatus == .playing,
-      ]
     }
   }
 
   // Observes the system player's queue so JS hears about track changes,
-  // including natural auto-advance when a song ends on its own.
+  // including natural auto-advance when a song ends on its own. The initial
+  // emit on attach is what lets a resumed session realign to wherever the
+  // player advanced while the app was dead — do not remove it.
   private func startObserving() {
     let player = SystemMusicPlayer.shared
-    emitCurrentTrack(of: player)
+    DispatchQueue.main.async { self.emitCurrentTrack(of: player) }
 
     player.queue.objectWillChange
       .receive(on: DispatchQueue.main)
@@ -148,9 +164,11 @@ public final class CadenceMusicKitModule: Module {
       title = entry.title
     }
 
-    // Dedupe: objectWillChange fires for many non-track reasons.
-    guard let id = trackId, id != lastTrackId else { return }
-    lastTrackId = id
+    // Dedupe on the queue ENTRY (objectWillChange fires for many non-track
+    // reasons), but emit the catalog id JS matches against. Entry-keyed dedupe
+    // means consecutive repeats of the same song still emit.
+    guard let id = trackId, entry.id != lastEntryId else { return }
+    lastEntryId = entry.id
     sendEvent("onTrackChange", ["trackId": id, "title": title ?? ""])
   }
 

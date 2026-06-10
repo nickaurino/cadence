@@ -8,15 +8,29 @@ import { PressableScale } from '@/components/PressableScale';
 function parseSummary(raw?: string): SessionSummary | null {
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as SessionSummary;
+    // Route params are external input (deep links). Valid JSON isn't enough:
+    // every field the screen dereferences must actually be a number, or the
+    // null-fallback UI shows instead of crashing.
+    const o = JSON.parse(raw) as SessionSummary;
+    if (
+      typeof o?.durationSec !== 'number' ||
+      typeof o?.steps !== 'number' ||
+      typeof o?.avgCadence !== 'number' ||
+      typeof o?.songsPlayed !== 'number' ||
+      typeof o?.distanceMi !== 'number'
+    ) {
+      return null;
+    }
+    return o;
   } catch {
     return null;
   }
 }
 
 function formatDuration(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
+  const total = Math.max(0, Math.round(sec)); // floats/negatives render sanely
+  const m = Math.floor(total / 60);
+  const s = total % 60;
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 

@@ -10,9 +10,13 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 import { colors } from '@/theme/colors';
+import { CADENCE_FLOOR, CADENCE_CEILING } from '@/types';
 
-const MIN = 50;
-const MAX = 250;
+// The wheel's bounds ARE the human guard rails — sourced from the constants so
+// they can't drift apart again (a hardcoded 250 max let users lock a pace the
+// detection band treats as sensor noise).
+const MIN = CADENCE_FLOOR;
+const MAX = CADENCE_CEILING;
 const ITEM_HEIGHT = 44;
 const VISIBLE = 5;
 const WHEEL_HEIGHT = ITEM_HEIGHT * VISIBLE;

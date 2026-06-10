@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/theme/colors';
 
@@ -101,9 +101,9 @@ export function CadenceRing({ value, unit = 'steps / min', active, closeness }: 
         >
           {value}
         </Animated.Text>
-        <Animated.Text style={styles.unit} numberOfLines={1}>
+        <Text style={styles.unit} numberOfLines={1}>
           {unit}
-        </Animated.Text>
+        </Text>
       </View>
     </Animated.View>
   );

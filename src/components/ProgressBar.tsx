@@ -9,7 +9,10 @@ interface Props {
 // Minimal display-only playback bar: a faint track with a Marigold fill.
 // Not scrubbable — the system Music player can't be reliably seeked.
 export function ProgressBar({ position, duration }: Props) {
-  const ratio = duration && duration > 0 ? Math.min(1, Math.max(0, position / duration)) : 0;
+  const ratio =
+    Number.isFinite(position) && duration && duration > 0
+      ? Math.min(1, Math.max(0, position / duration))
+      : 0;
 
   return (
     <View style={styles.wrap}>
