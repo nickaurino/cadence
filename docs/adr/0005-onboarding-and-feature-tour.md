@@ -50,13 +50,15 @@ Prep research (`docs/design-research/06-onboarding-psychology.md`,
 
 2. **The feature tour is four independent, one-time contextual coachmarks**, each
    gated on `(its own trigger) AND (not yet seen)` and persisted individually,
-   not a linear session-bound sequence. Scope: on-the-beat (the aha, gated on a
-   matched track actually playing, not just `inThePocket`), the "Matching N" pace
-   shift, pace lock, hold-to-end. They fire across whatever sessions their
-   triggers occur in, so a never-shift user still gets the shift coachmark later;
-   session resume can't re-fire a seen one. "Skip tour" marks all remaining seen;
-   the Settings handoff card shows after the last is seen. Re-triggerable from
-   Settings (clears all four flags).
+   not a linear sequence. Scope: on-the-beat (the aha, gated on a matched track
+   actually playing, not just `inThePocket`), the "Matching N" pace shift, pace
+   lock, hold-to-end. **The tour runs only while a persisted `tour_enabled` flag
+   is on** (revised 2026-06-09 after device testing): it's activated for the
+   first session after onboarding and by Replay tour, and deactivated when all
+   four are seen, on "Skip tour", or when its session ends unfinished — so
+   partial coachmarks never leak into ordinary later sessions. Session resume
+   mid-tour continues it (the flag persists); a seen coachmark never re-fires.
+   The Settings handoff card shows after the last is seen.
 
 3. **Mechanism is ported from the hobby-randomizer spotlight** (`SpotlightOverlay`
    4-panel cutout, `TourContext` step machine, module-level setter shims for

@@ -3,7 +3,7 @@ import { View, Text, Pressable, Switch, StyleSheet, ScrollView, Alert, Linking }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MatchSettings, DEFAULT_MATCH_SETTINGS } from '@/types';
-import { getMatchSettings, saveMatchSettings, resetOnboarding, clearCoachmarksSeen } from '@/storage/store';
+import { getMatchSettings, saveMatchSettings, resetOnboarding, clearCoachmarksSeen, setTourEnabled } from '@/storage/store';
 import { triggerReplayTour } from '@/tour/TourContext';
 import { colors } from '@/theme/colors';
 
@@ -47,6 +47,7 @@ export default function Settings() {
           onPress: async () => {
             await resetOnboarding();
             await clearCoachmarksSeen();
+            await setTourEnabled(false); // first session after onboarding re-activates it
             Alert.alert('Cadence reset', 'Reopen the app to start fresh.', [
               { text: 'Open iOS Settings', onPress: () => Linking.openSettings().catch(() => {}) },
               { text: 'Done', style: 'cancel' },

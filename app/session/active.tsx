@@ -103,9 +103,13 @@ export default function ActiveSession() {
     canReadMotion().then(setMotionOk);
 
     // Reaching a session is what completes onboarding (idempotent). If it wasn't
-    // complete on mount, this is the first session -> enable the reassurance line.
+    // complete on mount, this is the first session -> enable the reassurance line
+    // and turn on the feature tour (its only other entry point is Replay tour).
     hasCompletedOnboarding().then((done) => {
-      if (!done) setFirstRun(true);
+      if (!done) {
+        setFirstRun(true);
+        tour.activate();
+      }
       markOnboardingComplete().catch(() => {});
     });
 
@@ -174,11 +178,12 @@ export default function ActiveSession() {
     };
   }, [trackId]);
 
-  // Coachmark triggers. Each fires once (gated by its seen flag in TourContext)
-  // when its real moment arrives. One shows at a time (tour.current guard). No
+  // Coachmark triggers. Only while the tour is ENABLED (first session after
+  // onboarding, or the session after Replay tour — never ordinary sessions).
+  // Each fires once (seen flag), one at a time (tour.current guard). No
   // coachmarks in the no-motion fallback. See ADR 0005 / the spec for the design.
   useEffect(() => {
-    if (!tour.ready || tour.current || !state || motionOk === false) return;
+    if (!tour.ready || !tour.enabled || tour.current || !state || motionOk === false) return;
     const s = state;
     const inPocket = s.inThePocket;
 
@@ -208,7 +213,7 @@ export default function ActiveSession() {
       requestCoachmark('holdToEnd');
       return;
     }
-  }, [state, tour.ready, tour.current, tour.seen, motionOk, holdHintReady]);
+  }, [state, tour.ready, tour.enabled, tour.current, tour.seen, motionOk, holdHintReady]);
 
   // Settings handoff: show once, only when the last coachmark is seen DURING this
   // session (false -> true transition), not on every session where it's already done.
@@ -225,6 +230,9 @@ export default function ActiveSession() {
   async function handleEnd() {
     const engine = engineRef.current;
     const summary = engine.getSummary();
+    // The tour lives in one session: if it didn't finish here, it doesn't leak
+    // into later sessions (Replay tour re-enables it).
+    if (tour.enabled) tour.deactivate();
     await engine.stop();
     router.replace({ pathname: '/end', params: { summary: JSON.stringify(summary) } });
   }

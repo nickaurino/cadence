@@ -71,13 +71,14 @@ tied to implementation. Keep entries behavioral.
 - **Feature tour** — the set of contextual coachmarks that teach the core concepts
   the first time they become relevant, rather than up front. Four of them:
   on-the-beat (the aha), the "Matching N" shift, pace lock, and hold-to-end. They
-  are **independent and one-time**, not a linear sequence: each fires in whatever
-  session its trigger first occurs and is marked seen individually, so a user who
-  never shifts pace early still gets that coachmark whenever they first do. "Skip
-  tour" marks all remaining seen; the tour is re-triggerable from Settings. Ends
-  with a Settings handoff ("good defaults, all tunable in Settings") after the last
-  coachmark is seen. Mechanism borrowed from the hobby-randomizer spotlight
-  (measured cutout); see ADR 0005.
+  are **independent and one-time**, not a linear sequence, and the tour runs
+  **only while enabled**: the first session after onboarding, or the session after
+  "Replay tour" in Settings. It turns off when all four are seen, on "Skip tour",
+  or when its session ends unfinished — coachmarks never appear in ordinary
+  sessions. (Session resume mid-tour continues it.) Ends with a Settings handoff
+  ("good defaults, all tunable in Settings") after the last coachmark is seen.
+  Mechanism borrowed from the hobby-randomizer spotlight (measured cutout); see
+  ADR 0005.
 
 - **Coachmark** — one coachmark of the feature tour: a dimmed overlay with a cutout
   around a real, measured on-screen element plus a short instruction. Shows once
