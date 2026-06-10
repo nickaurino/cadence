@@ -48,7 +48,10 @@ const DEMO_STATE: SessionState = {
 export default function ActiveSession() {
   const { vibe, resume, demo } = useLocalSearchParams<{ vibe: Vibe; resume?: string; demo?: string }>();
   const isDemo = demo === '1';
-  const engineRef = useRef(new SessionEngine());
+  // Lazy + skipped in demo: the demo must run zero engine/sensor code, and the
+  // old `useRef(new SessionEngine())` constructed (and discarded) one per render.
+  const engineRef = useRef<SessionEngine | null>(null);
+  if (!isDemo && engineRef.current === null) engineRef.current = new SessionEngine();
   const [state, setState] = useState<SessionState | null>(isDemo ? DEMO_STATE : null);
   const [error, setError] = useState<string | null>(null);
   const [musicAvailable, setMusicAvailable] = useState(true);
@@ -80,10 +83,16 @@ export default function ActiveSession() {
     hold: holdRef,
   });
 
+  // The demo session only exists for the tour: reached any other way (deep link,
+  // stale route), bounce home instead of showing a fake-data screen.
+  useEffect(() => {
+    if (isDemo && tour.ready && !tour.running) router.replace('/home');
+  }, [isDemo, tour.ready, tour.running]);
+
   useEffect(() => {
     if (isDemo) return; // demo: no engine, no sensors, no persistence
 
-    const engine = engineRef.current;
+    const engine = engineRef.current!; // initialized in render for non-demo
     engine.onStateChange(setState);
 
     isAvailable().then(setMusicAvailable);
@@ -157,13 +166,16 @@ export default function ActiveSession() {
   async function handleEnd() {
     if (isDemo) {
       // Performing the hold IS the final step's action. Advancing past it sets
-      // tour.finished, and home shows the closing card.
-      if (step?.id === 'active-hold') tour.advance();
+      // tour.finished, and home shows the closing card. Ending the demo on any
+      // OTHER step (e.g. during the unmeasured window) bails out of the tour
+      // entirely so it can't linger orphaned across screens.
+      if (step?.id === 'active-hold') tour.advanceFrom('active-hold');
+      else if (tour.running) tour.skip();
       router.replace('/home');
       return;
     }
     if (tour.running) tour.skip(); // a real session ending mid-tour bails cleanly
-    const engine = engineRef.current;
+    const engine = engineRef.current!;
     const summary = engine.getSummary();
     await engine.stop();
     router.replace({ pathname: '/end', params: { summary: JSON.stringify(summary) } });
@@ -189,7 +201,9 @@ export default function ActiveSession() {
     return <View style={styles.container}><ActivityIndicator color={colors.accent} size="large" /></View>;
   }
 
-  const engine = engineRef.current;
+  // Null only in demo, where every engine callsite is guarded (run() no-ops,
+  // recalibrate/no-motion are !isDemo) — so the assertion is never dereferenced.
+  const engine = engineRef.current!;
 
   // No-motion state: motion is unavailable and the user hasn't fallen back to a
   // manual pace yet. Show recoverable options instead of spinning in "Finding
@@ -355,11 +369,11 @@ export default function ActiveSession() {
         onConfirm={(spm) => run(() => engine.setManualPace(spm))}
       />
 
-      {step && targetRect && (
+      {step && (
         <SpotlightOverlay
           targetRect={targetRect}
           copy={step.copy}
-          onDismiss={step.advance === 'tap' ? tour.advance : undefined}
+          onDismiss={step.advance === 'tap' ? () => tour.advanceFrom(step.id) : undefined}
           onSkip={handleSkipTour}
           cardPosition={step.cardPosition}
         />

@@ -52,6 +52,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    // Above SettingsButton's zIndex 20 so the backdrop actually blocks it.
+    zIndex: 30,
+    elevation: 30,
     backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
     paddingHorizontal: 28,

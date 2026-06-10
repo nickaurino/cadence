@@ -17,6 +17,7 @@ export function useTourSpotlight(screen: TourScreen, refs: RefMap) {
   const mounted = useRef(true);
 
   useEffect(() => {
+    mounted.current = true; // re-set on remount (cleanup below flips it false)
     return () => {
       mounted.current = false;
     };
@@ -25,10 +26,12 @@ export function useTourSpotlight(screen: TourScreen, refs: RefMap) {
   const step: TourStep | null = tour.step && tour.step.screen === screen ? tour.step : null;
 
   useEffect(() => {
-    if (!step) {
-      setTargetRect(null);
-      return;
-    }
+    // Clear immediately on every step change so a stale cutout from the previous
+    // step never lingers (visually or as a touch hole). While targetRect is null
+    // the screen renders the overlay in full-dark mode, which keeps everything
+    // blocked AND keeps Got it/Skip available even if measurement fails outright.
+    setTargetRect(null);
+    if (!step) return;
     let retry: ReturnType<typeof setTimeout> | null = null;
     const measure = (attempt: number) => {
       const node = refs[step.target]?.current;

@@ -19,17 +19,22 @@ const VIBES: { id: Vibe; label: string }[] = [
 
 export default function SessionSetup() {
   const [vibe, setVibe] = useState<Vibe>('mix');
+  const navigating = useRef(false);
 
   const vibesRef = useRef<View>(null);
   const goRef = useRef<View>(null);
   const { tour, step, targetRect } = useTourSpotlight('setup', { vibes: vibesRef, go: goRef });
 
   function handleStart() {
-    // During the tour, "Let's go" advances the script and opens a SIMULATED
-    // session (canned state, no engine or music) so the walkthrough works
-    // anywhere, no walking required.
-    if (step?.id === 'setup-go') {
-      tour.advance();
+    if (navigating.current) return; // debounce double-taps (a second push would desync the tour)
+    navigating.current = true;
+    setTimeout(() => (navigating.current = false), 1000);
+    // Branch on tour.running, NOT the step id: while the tour runs, this screen
+    // must NEVER start a real session (a stale step after a double-tap would
+    // otherwise route to a live engine with tour overlays on top). The advance is
+    // idempotent, so calling it when the step already moved on is a no-op.
+    if (tour.running) {
+      tour.advanceFrom('setup-go');
       router.push({ pathname: '/session/active', params: { vibe, demo: '1' } });
     } else {
       router.push({ pathname: '/session/active', params: { vibe } });
@@ -71,11 +76,11 @@ export default function SessionSetup() {
 
       <View style={styles.spacer} />
 
-      {step && targetRect && (
+      {step && (
         <SpotlightOverlay
           targetRect={targetRect}
           copy={step.copy}
-          onDismiss={step.advance === 'tap' ? tour.advance : undefined}
+          onDismiss={step.advance === 'tap' ? () => tour.advanceFrom(step.id) : undefined}
           onSkip={tour.skip}
           cardPosition={step.cardPosition}
         />

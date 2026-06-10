@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PressableScale } from '@/components/PressableScale';
 import { colors } from '@/theme/colors';
 
@@ -32,6 +33,7 @@ interface Props {
 // Ported from hobby-randomizer's spotlight: a 4-panel dark cutout around a
 // measured element plus a floating copy card. No SVG, no new dependencies.
 export function SpotlightOverlay({ targetRect, copy, onDismiss, onSkip, passthrough = false, cardPosition }: Props) {
+  const insets = useSafeAreaInsets();
   const cardBelow = cardPosition
     ? cardPosition === 'below'
     : !targetRect || targetRect.y < SCREEN_H * 0.45;
@@ -44,7 +46,9 @@ export function SpotlightOverlay({ targetRect, copy, onDismiss, onSkip, passthro
   const panelPE = passthrough ? 'none' : undefined;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    // zIndex above SettingsButton (20): RN zIndex reorders sibling hit-testing,
+    // so without this the gear floats over the panels and stays tappable.
+    <View style={[StyleSheet.absoluteFill, styles.root]} pointerEvents="box-none">
       {targetRect ? (
         <>
           <View pointerEvents={panelPE} style={[styles.panel, { top: 0, left: 0, right: 0, height: Math.max(0, targetRect.y - PAD) }]} />
@@ -84,7 +88,7 @@ export function SpotlightOverlay({ targetRect, copy, onDismiss, onSkip, passthro
       ) : null}
 
       {onSkip && (
-        <PressableScale style={styles.skip} onPress={onSkip}>
+        <PressableScale style={[styles.skip, { top: insets.top + 10 }]} onPress={onSkip}>
           <Text style={styles.skipText}>Skip tour</Text>
         </PressableScale>
       )}
@@ -93,6 +97,8 @@ export function SpotlightOverlay({ targetRect, copy, onDismiss, onSkip, passthro
 }
 
 const styles = StyleSheet.create({
+  // Above SettingsButton's zIndex 20 so the panels actually block it.
+  root: { zIndex: 30, elevation: 30 },
   panel: { position: 'absolute', backgroundColor: DARK },
   card: {
     position: 'absolute',
@@ -108,10 +114,10 @@ const styles = StyleSheet.create({
   copy: { color: colors.text, fontSize: 16, lineHeight: 24 },
   dismissBtn: { alignSelf: 'flex-end', backgroundColor: colors.accent, paddingVertical: 9, paddingHorizontal: 20, borderRadius: 12 },
   dismissText: { color: colors.onAccent, fontWeight: '700', fontSize: 15 },
-  // Top-left so it never sits over the Settings gear (top-right).
+  // Top-left so it never sits over the Settings gear (top-right); `top` comes
+  // from the safe-area inset at render time.
   skip: {
     position: 'absolute',
-    top: 56,
     left: 24,
     paddingVertical: 6,
     paddingHorizontal: 14,

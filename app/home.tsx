@@ -12,6 +12,7 @@ import { useTourSpotlight } from '@/tour/useTourSpotlight';
 
 export default function Home() {
   const startRef = useRef<View>(null);
+  const navigating = useRef(false);
   const { tour, step, targetRect } = useTourSpotlight('home', { start: startRef });
 
   // The guided tour starts here whenever it's pending (first launch after
@@ -21,8 +22,11 @@ export default function Home() {
   }, [tour.ready, tour.pending, tour.running]);
 
   function handleStart() {
-    // During the tour the Start tap IS the advance action.
-    if (step?.id === 'home-start') tour.advance();
+    if (navigating.current) return; // debounce double-taps
+    navigating.current = true;
+    setTimeout(() => (navigating.current = false), 1000);
+    // During the tour the Start tap IS the advance action (idempotent).
+    tour.advanceFrom('home-start');
     router.push('/session/setup');
   }
 
@@ -45,7 +49,7 @@ export default function Home() {
 
       <View style={styles.spacer} />
 
-      {step && targetRect && (
+      {step && (
         <SpotlightOverlay
           targetRect={targetRect}
           copy={step.copy}

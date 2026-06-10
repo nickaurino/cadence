@@ -13,7 +13,9 @@ interface TourValue {
   step: TourStep | null; // null when not running or past the last step
   finished: boolean; // ran past the last step (time for the final card on home)
   begin: () => void; // home calls this when ready && pending
-  advance: () => void;
+  // Advance ONLY if `stepId` is still the current step — double-taps and stale
+  // closures become no-ops instead of skipping steps.
+  advanceFrom: (stepId: string) => void;
   skip: () => void; // bail out entirely
   end: () => void; // normal completion (after the final card)
 }
@@ -27,7 +29,7 @@ const TourContext = createContext<TourValue>({
   step: null,
   finished: false,
   begin: noop,
-  advance: noop,
+  advanceFrom: noop,
   skip: noop,
   end: noop,
 });
@@ -57,7 +59,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const setPendingPersisted = (p: boolean) => {
     setPending(p);
-    setTourEnabled(p).catch(() => {});
+    // One retry, then log: a silently-failed disarm would resurrect the tour on
+    // the next launch.
+    setTourEnabled(p).catch(() =>
+      setTourEnabled(p).catch((e) => console.warn('[tour] failed to persist pending:', e))
+    );
   };
 
   const begin = () => {
@@ -65,7 +71,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
     setRunning(true);
   };
 
-  const advance = () => setStepIndex((i) => i + 1);
+  const advanceFrom = (stepId: string) =>
+    setStepIndex((i) => (stepAt(i)?.id === stepId ? i + 1 : i));
 
   const stop = () => {
     setRunning(false);
@@ -93,7 +100,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
         step,
         finished,
         begin,
-        advance,
+        advanceFrom,
         skip,
         end,
       }}
