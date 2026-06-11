@@ -6,7 +6,9 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "cadence",
-    "platforms": ["ios"],
+    "platforms": [
+      "ios"
+    ],
     "ios": {
       "bundleIdentifier": "com.nickaurino.cadence",
       "buildNumber": "1",
@@ -24,6 +26,13 @@
     "plugins": [
       "expo-router",
       "expo-sensors"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7d9fb0e0-400d-41f1-80df-606854c74559"
+      }
+    },
+    "owner": "nickaurino"
   }
 }

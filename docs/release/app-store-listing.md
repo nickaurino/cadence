@@ -59,7 +59,7 @@ Lace up and let the music keep your pace.
 ```
 No account or login is required.
 
-Playback requires an active Apple Music subscription. Pace detection works without one — the app offers a "continue without" path during setup.
+Playback requires an active Apple Music subscription. Pace detection works without one, and the app offers a "continue without" path during setup.
 
 IMPORTANT FOR REVIEW: Music matching is driven by physical movement (step rate from Core Motion). On a stationary review device, no steps are detected, so no songs will queue automatically. To test playback without walking:
   1. Start a session (choose any vibe).
