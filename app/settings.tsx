@@ -17,13 +17,18 @@ export default function Settings() {
   // the native SafeAreaView: that view applies its padding a frame after mount,
   // so the whole screen painted high and visibly dropped into place.
   const insets = useSafeAreaInsets();
-  const [settings, setSettings] = useState<MatchSettings>(DEFAULT_MATCH_SETTINGS);
+  // null until the saved settings load. The screen renders NOTHING until then:
+  // painting defaults first meant the toggles visibly flipped to the saved
+  // values ~0.1s later (and the whole screen re-laid-out in the same window).
+  // The load is a single AsyncStorage read, so the blank frame is brief.
+  const [settings, setSettings] = useState<MatchSettings | null>(null);
 
   useEffect(() => {
-    getMatchSettings().then(setSettings);
+    getMatchSettings().then(setSettings).catch(() => setSettings(DEFAULT_MATCH_SETTINGS));
   }, []);
 
   function update(patch: Partial<MatchSettings>) {
+    if (!settings) return;
     const next = { ...settings, ...patch };
     // Never leave zero match modes — fall back to exact.
     if (!next.exact && !next.halfTime && !next.doubleTime) next.exact = true;
@@ -31,13 +36,19 @@ export default function Settings() {
     saveMatchSettings(next);
   }
 
-  const enabledModes = [settings.exact, settings.halfTime, settings.doubleTime].filter(Boolean).length;
-
   async function restartOnboarding() {
     await resetOnboarding();
     await setTourEnabled(false); // completing onboarding re-arms the tour
     router.replace('/onboarding'); // the full first-run flow: onboarding, then the guided tour
   }
+
+  // First visible paint must be the final layout: until the saved settings are
+  // in, show only the background so nothing renders and then moves.
+  if (!settings) {
+    return <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]} />;
+  }
+
+  const enabledModes = [settings.exact, settings.halfTime, settings.doubleTime].filter(Boolean).length;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
