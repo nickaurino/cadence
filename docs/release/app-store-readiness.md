@@ -39,10 +39,10 @@ The shape: **Phase 1-2 once → Phase 3-4 loop a few TestFlight rounds → Phase
 3. [ ] **Create the app record** in App Store Connect (My Apps → "+"):
        name "Cadence" (have a backup name in case it's taken — e.g.
        "Cadence — Music at Your Pace"), primary language, bundle ID, SKU.
-4. [ ] **Privacy policy page** — required for the listing AND external
-       TestFlight even with zero data collection. One page on the portfolio
-       site: what the app accesses (motion, Apple Music), that everything stays
-       on-device, no analytics/ads/accounts, contact email. Note the URL.
+4. [x] **Privacy policy page** — DONE. Hosted on the public repo:
+       `https://github.com/nickaurino/cadence/blob/main/PRIVACY.md`
+       (source: `PRIVACY.md`). Paste this into App Store Connect's Privacy
+       Policy URL field. Swappable for a portfolio URL anytime before launch.
 
 ## Phase 2 — Release build config (half a day)
 
