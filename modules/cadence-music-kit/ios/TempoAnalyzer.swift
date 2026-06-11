@@ -21,6 +21,19 @@ enum TempoAnalyzer {
   // Number of overlapping windows used to gauge tempo stability across a clip.
   private static let stabilityWindowCount = 4
 
+  // Perceptual tempo prior. The strongest autocorrelation peak is frequently the
+  // half-tempo period (every other beat), so a raw argmax skews slow and fast
+  // songs get tagged at half their real BPM. We weight each candidate by a
+  // log-Gaussian centered on the tempo humans most readily feel a beat at
+  // (~130 BPM, after Moelants' resonance studies) before choosing the winner,
+  // which pulls fast songs back into their true octave. Tuned with tools/tempo-check.
+  private static let preferredBpm = 130.0
+  private static let prefSigmaOctaves = 0.9
+  private static func tempoWeight(_ bpm: Double) -> Double {
+    let z = log2(bpm / preferredBpm) / prefSigmaOctaves
+    return exp(-0.5 * z * z)
+  }
+
   // A preview clip is ~30s of AAC (~1MB); anything much larger isn't a preview.
   private static let maxDownloadBytes = 5_000_000
   // Decode at most ~35s of audio regardless of what the file claims.
@@ -154,20 +167,25 @@ enum TempoAnalyzer {
     // (pulse clarity), not just find the max.
     var corrByLag = [Float](repeating: 0, count: maxLag - minLag + 1)
     var bestLag = -1
-    var bestCorr = -Float.greatestFiniteMagnitude
+    var bestScore = -Float.greatestFiniteMagnitude
     for lag in minLag...maxLag {
       var corr: Float = 0
       flux.withUnsafeBufferPointer { fp in
         vDSP_dotpr(fp.baseAddress!, 1, fp.baseAddress! + lag, 1, &corr, vDSP_Length(flux.count - lag))
       }
       corr /= Float(flux.count - lag)
-      corrByLag[lag - minLag] = corr
-      if corr > bestCorr {
-        bestCorr = corr
+      corrByLag[lag - minLag] = corr // raw, kept for the clarity prominence measure
+      // Pick the winner on the perceptually-weighted correlation, not the raw
+      // peak, so the half-tempo period doesn't win on fast songs.
+      let bpm = 60.0 * frameRate / Double(lag)
+      let score = corr * Float(tempoWeight(bpm))
+      if score > bestScore {
+        bestScore = score
         bestLag = lag
       }
     }
     guard bestLag > 0 else { return nil }
+    let bestCorr = corrByLag[bestLag - minLag] // raw correlation at the chosen lag
 
     // Parabolic interpolation around the peak: at ~86 fps the raw lag grid is
     // ±4 BPM at 200 BPM, coarser than the matcher's tolerance budget.
@@ -187,7 +205,7 @@ enum TempoAnalyzer {
     let bpm = (60.0 * frameRate / refinedLag * 10).rounded() / 10
     let pulseClarity = clarityScore(corrByLag: corrByLag, bestCorr: bestCorr)
     let tempoStability = stabilityScore(
-      flux: flux, minLag: minLag, maxLag: maxLag, globalLag: bestLag
+      flux: flux, minLag: minLag, maxLag: maxLag, globalLag: bestLag, frameRate: frameRate
     )
 
     return TrackFeatures(bpm: bpm, pulseClarity: pulseClarity, tempoStability: tempoStability)
@@ -207,7 +225,7 @@ enum TempoAnalyzer {
   // Fraction of overlapping windows whose dominant lag agrees with the global
   // lag (within +/-1 bin), in [0,1]. 1 = rock-steady tempo, low = drifts/breaks.
   private static func stabilityScore(
-    flux: [Float], minLag: Int, maxLag: Int, globalLag: Int
+    flux: [Float], minLag: Int, maxLag: Int, globalLag: Int, frameRate: Double
   ) -> Double {
     let n = flux.count
     // Each window must be longer than maxLag to autocorrelate at that lag.
@@ -224,15 +242,18 @@ enum TempoAnalyzer {
       guard end <= n else { break }
       counted += 1
       var bestLag = -1
-      var bestCorr = -Float.greatestFiniteMagnitude
+      var bestScore = -Float.greatestFiniteMagnitude
       flux.withUnsafeBufferPointer { fp in
         let base = fp.baseAddress! + start
         for lag in minLag...maxLag {
           var corr: Float = 0
           vDSP_dotpr(base, 1, base + lag, 1, &corr, vDSP_Length(windowLen - lag))
           corr /= Float(windowLen - lag) // same per-lag normalization as the global pass
-          if corr > bestCorr {
-            bestCorr = corr
+          // Same perceptual weighting as the global pass, so a window agrees on
+          // the chosen octave rather than drifting to the half-tempo peak.
+          let score = corr * Float(tempoWeight(60.0 * frameRate / Double(lag)))
+          if score > bestScore {
+            bestScore = score
             bestLag = lag
           }
         }
