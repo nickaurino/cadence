@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, Text, Pressable, Switch, StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MatchSettings, DEFAULT_MATCH_SETTINGS } from '@/types';
 import { getMatchSettings, saveMatchSettings, resetOnboarding, setTourEnabled } from '@/storage/store';
@@ -13,6 +13,10 @@ const STRICTNESS: { label: string; tolerance: number }[] = [
 ];
 
 export default function Settings() {
+  // Insets via the hook (synchronous from the provider's initialMetrics), not
+  // the native SafeAreaView: that view applies its padding a frame after mount,
+  // so the whole screen painted high and visibly dropped into place.
+  const insets = useSafeAreaInsets();
   const [settings, setSettings] = useState<MatchSettings>(DEFAULT_MATCH_SETTINGS);
 
   useEffect(() => {
@@ -36,7 +40,7 @@ export default function Settings() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Settings</Text>
         <Pressable hitSlop={12} onPress={() => router.back()}>
@@ -154,7 +158,7 @@ export default function Settings() {
           </Pressable>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
