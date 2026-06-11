@@ -1,0 +1,13 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="26"/>
+    </filter>
+    <filter id="glowTight" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="11"/>
+    </filter>
+  </defs>
+  <path d="M 668 356 A 220 220 0 1 0 668 668" fill="none" stroke="#EFA836" stroke-width="70" stroke-linecap="round" filter="url(#glow)" opacity="0.55"/>
+  <path d="M 668 356 A 220 220 0 1 0 668 668" fill="none" stroke="#EFA836" stroke-width="70" stroke-linecap="round" filter="url(#glowTight)" opacity="0.7"/>
+  <path d="M 668 356 A 220 220 0 1 0 668 668" fill="none" stroke="#EFA836" stroke-width="70" stroke-linecap="round"/>
+</svg>
