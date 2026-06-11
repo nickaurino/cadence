@@ -18,30 +18,18 @@ half their real tempo. Measured with `tools/tempo-check`:
 Committed `2a5c04b`. JS reload does NOT pick this up — lands on the next native
 build. Re-run `bash tools/tempo-check/run.sh` anytime to re-measure.
 
-## 2. Gait-aware pace assist  🔲 proposed (design below)
+## 2. Gait-aware pace assist  ✅ code done (JS), device-verify on next build
 
-Problem: "Set pace" asks for steps-per-minute, but nobody knows their SPM.
-Pull from `docs/ideas/session-controls-backlog.md` research:
+`ManualPaceModal` now leads with a Walk/Run toggle:
+- **Run** → Easy/Typical/Fast effort chips (165/175/185), one tap.
+- **Walk** → mph stepper computing `cadence ≈ 16*mph + 60` (3.0 mph ≈ 108 spm).
+- Wheel stays as the exact-number override.
 
-- Running cadence is near-constant across speed → mph is a poor proxy for
-  runners. Effort, not speed, is the right input.
-- Walking cadence DOES track speed → **cadence ≈ 16 × mph + 60** (walking only).
-- Height adds little beyond the walking formula; not worth the friction.
-
-Proposed addition to `ManualPaceModal`:
-
-- A small **Walk / Run** toggle above the wheel.
-- **Run** → three effort chips (Easy ~165 / Typical ~175 / Fast ~185) that set
-  the wheel with one tap. (Anchors already exist as labels; make them tappable.)
-- **Walk** → an mph stepper (~2.0–4.5) that live-computes spm via `16*mph+60`
-  and sets the wheel.
-- The wheel stays as the exact-number override for anyone who does know.
-
-Honesty: present estimates as a starting point ("we'll get you close, adjust if
-it feels off"), never as a measured personal cadence.
-
-Open question for Nick: include height as an optional refinement, or leave it
-out (recommended)?
+Formula in `src/engine/pace.ts` (+ tests). Height left out per decision (the
+walking formula already encodes step length; variance is large). Committed
+`7e7c86d`. JS-only, so it reloads on a dev build; still ships in the next build.
+Device check pending: confirm the toggle, chips, and mph stepper feel right and
+drive the wheel correctly.
 
 ---
 
