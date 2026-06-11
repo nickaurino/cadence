@@ -1,4 +1,4 @@
-# Cadence — Privacy Policy
+# Cadence Privacy Policy
 
 _Last updated: June 10, 2026_
 
@@ -29,8 +29,8 @@ motion, and pace detection works without an Apple Music subscription).
 
 ## What stays on your device
 
-Any session information Cadence saves — your current session so it can resume
-after you close the app, and your in-app preferences — is stored only on your
+The session information Cadence saves (your current session so it can resume
+after you close the app, and your in-app preferences) is stored only on your
 device using the operating system's standard local storage. It never leaves your
 phone, and removing the app removes it.
 
