@@ -28,13 +28,13 @@ export async function hasCompletedOnboarding(): Promise<boolean> {
   return value === 'true';
 }
 
-// Reset onboarding so the first-run flow replays on next launch (Reset app).
+// Reset onboarding so the first-run flow replays (Settings -> Restart onboarding).
 export async function resetOnboarding(): Promise<void> {
   await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY);
 }
 
 // Whether the guided feature tour is pending (should run from the home screen).
-// Off by default; turned on when onboarding completes and by Replay tour, and
+// Off by default; turned on when onboarding completes, and
 // turned off when the tour finishes or is skipped. Persisted so a kill mid-tour
 // restarts it from the top.
 export async function isTourEnabled(): Promise<boolean> {

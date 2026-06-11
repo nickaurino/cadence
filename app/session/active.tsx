@@ -75,7 +75,7 @@ export default function ActiveSession() {
   const songRef = useRef<View>(null);
   const pillsRef = useRef<View>(null);
   const holdRef = useRef<View>(null);
-  const { tour, step, targetRect, failed } = useTourSpotlight('active', {
+  const { tour, step, targetRect, failed, measuring } = useTourSpotlight('active', {
     hero: heroRef,
     lock: lockRef,
     song: songRef,
@@ -376,7 +376,8 @@ export default function ActiveSession() {
           onDismiss={step.advance === 'tap' ? () => tour.advanceFrom(step.id) : undefined}
           onSkip={handleSkipTour}
           cardPosition={step.cardPosition}
-          cardVisible={!!targetRect || failed}
+          cardVisible={(!!targetRect && !measuring) || failed}
+          blockAll={measuring}
         />
       )}
     </SafeAreaView>

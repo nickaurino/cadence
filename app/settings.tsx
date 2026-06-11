@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Pressable, Switch, StyleSheet, ScrollView, Alert, Linking } from 'react-native';
+import { View, Text, Pressable, Switch, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MatchSettings, DEFAULT_MATCH_SETTINGS } from '@/types';
 import { getMatchSettings, saveMatchSettings, resetOnboarding, setTourEnabled } from '@/storage/store';
-import { triggerReplayTour } from '@/tour/TourContext';
 import { colors } from '@/theme/colors';
 
 const STRICTNESS: { label: string; tolerance: number }[] = [
@@ -30,34 +29,10 @@ export default function Settings() {
 
   const enabledModes = [settings.exact, settings.halfTime, settings.doubleTime].filter(Boolean).length;
 
-  function replayTour() {
-    triggerReplayTour();
-    Alert.alert('Tour ready', 'The guided tour will start from the home screen.', [
-      { text: 'Take me home', onPress: () => router.replace('/home') },
-      { text: 'Later', style: 'cancel' },
-    ]);
-  }
-
-  function confirmResetApp() {
-    Alert.alert(
-      'Reset Cadence?',
-      "You'll see onboarding and the tour again on next launch. To remove Motion or Apple Music access, open iOS Settings (an app can't revoke its own permissions).",
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: async () => {
-            await resetOnboarding();
-            await setTourEnabled(false); // onboarding completion re-arms the tour
-            Alert.alert('Cadence reset', 'Reopen the app to start fresh.', [
-              { text: 'Open iOS Settings', onPress: () => Linking.openSettings().catch(() => {}) },
-              { text: 'Done', style: 'cancel' },
-            ]);
-          },
-        },
-      ]
-    );
+  async function restartOnboarding() {
+    await resetOnboarding();
+    await setTourEnabled(false); // completing onboarding re-arms the tour
+    router.replace('/onboarding'); // the full first-run flow: onboarding, then the guided tour
   }
 
   return (
@@ -167,10 +142,10 @@ export default function Settings() {
 
         <Text style={styles.sectionLabel}>ABOUT</Text>
         <View style={styles.group}>
-          <Pressable style={[styles.aboutRow, styles.rowDivider]} onPress={replayTour}>
+          <Pressable style={[styles.aboutRow, styles.rowDivider]} onPress={restartOnboarding}>
             <View style={styles.rowText}>
-              <Text style={styles.rowTitle}>Replay tour</Text>
-              <Text style={styles.rowSub}>Run the guided walkthrough again from the home screen.</Text>
+              <Text style={styles.rowTitle}>Restart onboarding</Text>
+              <Text style={styles.rowSub}>Go through the intro and guided tour again from the beginning.</Text>
             </View>
           </Pressable>
           <Pressable style={styles.aboutRow} onPress={() => router.push('/credits')}>
@@ -178,10 +153,6 @@ export default function Settings() {
             <Text style={styles.chevron}>›</Text>
           </Pressable>
         </View>
-
-        <Pressable onPress={confirmResetApp} style={({ pressed }) => [styles.reset, pressed && styles.resetPressed]}>
-          <Text style={styles.resetText}>Reset app</Text>
-        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );

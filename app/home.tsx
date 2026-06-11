@@ -13,10 +13,10 @@ import { useTourSpotlight } from '@/tour/useTourSpotlight';
 export default function Home() {
   const startRef = useRef<View>(null);
   const navigating = useRef(false);
-  const { tour, step, targetRect, failed } = useTourSpotlight('home', { start: startRef });
+  const { tour, step, targetRect, failed, measuring } = useTourSpotlight('home', { start: startRef });
 
   // The guided tour starts here whenever it's pending (first launch after
-  // onboarding, or Replay tour).
+  // onboarding, or Settings -> Restart onboarding).
   useEffect(() => {
     if (tour.ready && tour.pending && !tour.running) tour.begin();
   }, [tour.ready, tour.pending, tour.running]);
@@ -55,7 +55,8 @@ export default function Home() {
           copy={step.copy}
           onSkip={tour.skip}
           cardPosition={step.cardPosition}
-          cardVisible={!!targetRect || failed}
+          cardVisible={(!!targetRect && !measuring) || failed}
+          blockAll={measuring}
         />
       )}
 

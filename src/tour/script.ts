@@ -1,7 +1,7 @@
 // The feature tour is a SCRIPTED, Dabble-style guided walkthrough: a fixed
 // sequence of spotlight steps across home -> vibe setup -> a SIMULATED session
 // (canned state, no engine, no music). It runs when pending (first launch after
-// onboarding, or Replay tour). During the tour everything except the spotlit
+// onboarding, or Settings -> Restart onboarding). During the tour everything except the spotlit
 // target is blocked; every step shows Skip.
 //
 // Copy rules: honesty firewall (no unverifiable state claims), no em dashes.

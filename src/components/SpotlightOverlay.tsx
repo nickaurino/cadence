@@ -31,11 +31,15 @@ interface Props {
   // Whether to render the copy card. Defaults to true; the tour passes false
   // during the brief unmeasured window so a center-parked card never flashes.
   cardVisible?: boolean;
+  // While the next step's target is being measured, the previous cutout stays
+  // on screen (no dark flash between steps). This blocks ALL touches in that
+  // window so the stale cutout can't be tapped through.
+  blockAll?: boolean;
 }
 
 // Ported from hobby-randomizer's spotlight: a 4-panel dark cutout around a
 // measured element plus a floating copy card. No SVG, no new dependencies.
-export function SpotlightOverlay({ targetRect, copy, onDismiss, onSkip, passthrough = false, cardPosition, cardVisible = true }: Props) {
+export function SpotlightOverlay({ targetRect, copy, onDismiss, onSkip, passthrough = false, cardPosition, cardVisible = true, blockAll = false }: Props) {
   const insets = useSafeAreaInsets();
   const cardBelow = cardPosition
     ? cardPosition === 'below'
@@ -62,6 +66,8 @@ export function SpotlightOverlay({ targetRect, copy, onDismiss, onSkip, passthro
       ) : (
         <View pointerEvents={panelPE} style={[styles.panel, StyleSheet.absoluteFill]} />
       )}
+
+      {blockAll && <View style={StyleSheet.absoluteFill} />}
 
       {targetRect && (
         <View

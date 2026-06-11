@@ -18,6 +18,11 @@ export function useTourSpotlight(screen: TourScreen, refs: RefMap) {
   // measuring window). Lets the screen show a centered card fallback only then,
   // so the normal window never flashes a wrongly-positioned card.
   const [failed, setFailed] = useState(false);
+  // true while the new step's target is being measured. The previous step's
+  // rect is kept on screen during this window (no full-dark flash between
+  // steps); the overlay blocks ALL touches and hides the card until the new
+  // rect lands, so the stale cutout is never a touch hole.
+  const [measuring, setMeasuring] = useState(false);
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -30,29 +35,41 @@ export function useTourSpotlight(screen: TourScreen, refs: RefMap) {
   const step: TourStep | null = tour.step && tour.step.screen === screen ? tour.step : null;
 
   useEffect(() => {
-    // Clear immediately on every step change so a stale cutout from the previous
-    // step never lingers (visually or as a touch hole). While targetRect is null
-    // and not failed, the screen blocks with a plain dark panel and shows NO card
-    // (no flash); on outright failure it falls back to a centered card.
-    setTargetRect(null);
+    // On step change, KEEP the previous rect on screen while the new target is
+    // measured: cutting to a full-dark frame between steps read as a glitchy
+    // flash. `measuring` makes the overlay block everything (so the stale
+    // cutout is not a touch hole) and hide the card until the new rect lands;
+    // on outright failure it falls back to a centered card.
     setFailed(false);
-    if (!step) return;
+    if (!step) {
+      setTargetRect(null);
+      setMeasuring(false);
+      return;
+    }
+    setMeasuring(true);
     let retry: ReturnType<typeof setTimeout> | null = null;
+    const fail = () => {
+      if (!mounted.current) return;
+      setTargetRect(null);
+      setMeasuring(false);
+      setFailed(true);
+    };
     const measure = (attempt: number) => {
       const node = refs[step.target]?.current;
       if (!node) {
         if (attempt === 0) retry = setTimeout(() => measure(1), 350);
-        else if (mounted.current) setFailed(true);
+        else fail();
         return;
       }
       node.measure((_x, _y, width, height, pageX, pageY) => {
         if (!mounted.current) return;
         if (width === 0 && height === 0) {
           if (attempt === 0) retry = setTimeout(() => measure(1), 350);
-          else setFailed(true);
+          else fail();
           return;
         }
         setTargetRect({ x: pageX, y: pageY, width, height });
+        setMeasuring(false);
       });
     };
     // Wait a frame so the screen has laid out before measuring.
@@ -63,5 +80,5 @@ export function useTourSpotlight(screen: TourScreen, refs: RefMap) {
     };
   }, [step?.id]);
 
-  return { tour, step, targetRect, failed };
+  return { tour, step, targetRect, failed, measuring };
 }

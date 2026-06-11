@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text } from 'react-native';
+import { useRef, useState } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 import { colors } from '@/theme/colors';
@@ -31,22 +31,8 @@ export function HoldToEnd({
   duration = 1500,
 }: HoldToEndProps) {
   const progress = useRef(new Animated.Value(0)).current;
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const firedRef = useRef(false);
   const [held, setHeld] = useState(false);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
-
-  const clearHoldTimeout = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-  };
 
   const onComplete = () => {
     if (firedRef.current) return;
@@ -61,18 +47,21 @@ export function HoldToEnd({
     firedRef.current = false;
     setHeld(true);
     haptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
+    // Linear easing + completing via the animation callback (not a parallel
+    // timer): the default ease-out crawled near the end, and a timer could fire
+    // and navigate away before the bar visibly reached 100%.
     Animated.timing(progress, {
       toValue: 1,
       duration,
+      easing: Easing.linear,
       useNativeDriver: false,
-    }).start();
-    clearHoldTimeout();
-    timeoutRef.current = setTimeout(onComplete, duration);
+    }).start(({ finished }) => {
+      if (finished) onComplete();
+    });
   };
 
   const handlePressOut = () => {
     setHeld(false);
-    clearHoldTimeout();
     if (firedRef.current) return;
     progress.stopAnimation(() => {
       Animated.timing(progress, {
