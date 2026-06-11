@@ -307,12 +307,21 @@ test('inThePocket is true on first lock and a steady near-managed reading', asyn
   expect(engine.getState().inThePocket).toBe(true);
 });
 
-test('inThePocket is false when a single reading drifts past the threshold', async () => {
-  const engine = await startAndMove(); // managed 170
+test('a single drifted reading does NOT leave the pocket; sustained drift does', async () => {
+  const engine = await startAndMove(); // managed 170, threshold 10
 
-  mockHolder.cb!(190); // drift 20 >= threshold 10, managed hasn't moved yet
+  // The pocket follows the SMOOTHED value: one noisy reading can't flicker the
+  // ring out of the pocket (the music doesn't re-match on one reading either).
+  mockHolder.cb!(190); // drift 20 >= threshold 10
   await flush();
+  expect(engine.getState().inThePocket).toBe(true);
 
+  // Sustained real drift converges the display past the threshold. managed
+  // stays put (sustainMs hasn't elapsed on the real clock).
+  for (let i = 0; i < 10; i++) {
+    mockHolder.cb!(190);
+    await flush();
+  }
   expect(engine.getState().managedCadence).toBe(170);
   expect(engine.getState().inThePocket).toBe(false);
 });

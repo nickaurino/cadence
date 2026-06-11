@@ -36,6 +36,10 @@ psychology research → Dabble teardown → growth-docs session → spec → pla
 5. **Push to GitHub** — `main` is ~40 commits ahead of `origin` (public repo).
 6. **Settings toggles** — if the native `Switch` animation still reads as "too much,"
    build a calmer custom toggle.
+7. **Native on-chip cadence (v1.x)** — expose `CMPedometer.currentCadence` from the
+   native module as a steadier raw signal under `src/engine/smoothing.ts`.
+8. **Beat-phase lock (v2 exploration)** — true step-on-the-beat needs an in-app
+   audio pipeline with time-stretching; deferred with full reasoning in ADR 0006.
 
 ## Process notes
 - Animations: one driver per view (see CadenceRing/PressableScale).

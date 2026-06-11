@@ -1,6 +1,7 @@
 // src/engine/session.ts
 
 import { CadenceDetector } from '@/sensors/cadence';
+import { CadenceSmoother } from '@/engine/smoothing';
 import { getRecommendations } from '@/music/api';
 import {
   playQueue,
@@ -62,7 +63,7 @@ export class SessionEngine {
   private _resuming = false; // a resume is in flight; recover if the player moved past our queue
   private _managedSince: number | null = null; // when the current drift began
   private _pendingTracks: MusicTrack[] | null = null; // queued for the next boundary
-  private _smoothedPerceived: number | null = null; // EMA for a calmer displayed number
+  private _smoother = new CadenceSmoother(); // calms the displayed number + ring (see smoothing.ts)
   private _settings: MatchSettings = DEFAULT_MATCH_SETTINGS;
   private _trackSub: { remove: () => void } | null = null;
   // Session stats for the end summary.
@@ -131,7 +132,7 @@ export class SessionEngine {
   async start({ vibe }: StartOptions): Promise<void> {
     this._epoch += 1; // invalidate any in-flight work from a previous session
     this._resuming = false;
-    this._smoothedPerceived = null;
+    this._smoother.reset();
     this._cadenceSum = 0;
     this._cadenceCount = 0;
     this._playedIds = new Set();
@@ -196,7 +197,7 @@ export class SessionEngine {
     // zero, so without this base the summary would lose everything pre-resume.
     this._detector.seedStepsBase(snapshot.steps ?? 0);
 
-    this._smoothedPerceived = null;
+    this._smoother.reset();
     this._managedSince = null;
     this._pendingTracks = null;
     this._committing = false;
@@ -258,8 +259,8 @@ export class SessionEngine {
     return Math.abs(spm - this._state.managedCadence) < threshold;
   }
 
-  // Fed the same raw windowed spm as _computePocket so the ring (closeness) and
-  // the label (inThePocket) can never disagree at the band edge.
+  // Fed the same SMOOTHED spm as _computePocket so the ring (closeness), the
+  // label (inThePocket), and the displayed number can never disagree.
   private _computeCloseness(spm: number): number {
     if (!this._state || this._state.isCalibrating) return 0;
     if (this._paceLocked) return 1;
@@ -271,13 +272,14 @@ export class SessionEngine {
   private async _onPerceivedCadence(spm: number): Promise<void> {
     if (!this._state) return;
 
-    // Light EMA so the displayed number doesn't twitch second to second. Guard
-    // rails and managed logic still use the raw windowed value below.
-    this._smoothedPerceived =
-      this._smoothedPerceived === null ? spm : this._smoothedPerceived * 0.6 + spm * 0.4;
-    this._state.perceivedCadence = Math.round(this._smoothedPerceived);
-    this._state.inThePocket = this._computePocket(spm);
-    this._state.pocketCloseness = this._computeCloseness(spm);
+    // Median + glide + deadband so the displayed number holds still at a steady
+    // stride. The pocket label and ring closeness are fed the SAME smoothed
+    // value (they must agree with the number the user is watching); guard rails
+    // and managed logic below still use the raw windowed value.
+    const displayed = this._smoother.push(spm);
+    this._state.perceivedCadence = displayed;
+    this._state.inThePocket = this._computePocket(displayed);
+    this._state.pocketCloseness = this._computeCloseness(displayed);
 
     // Above the ceiling = sensor noise: show it, flag it, don't manage.
     if (spm > CADENCE_CEILING) {
@@ -504,7 +506,7 @@ export class SessionEngine {
     this._state.inThePocket = true;
     this._state.pocketCloseness = 1;
     this._state.perceivedCadence = spm;
-    this._smoothedPerceived = spm;
+    this._smoother.seed(spm);
     await this._commitManaged(spm, true);
   }
 
@@ -593,7 +595,7 @@ export class SessionEngine {
     this._paceLocked = false;
     this._managedSince = null;
     this._pendingTracks = null;
-    this._smoothedPerceived = null;
+    this._smoother.reset();
     this._state.paceLocked = false;
     this._state.isCalibrating = true;
     this._state.inThePocket = false;
@@ -639,7 +641,7 @@ export class SessionEngine {
     this._resuming = false;
     this._managedSince = null;
     this._pendingTracks = null;
-    this._smoothedPerceived = null;
+    this._smoother.reset();
     this._paceLocked = false;
     this._cadenceSum = 0;
     this._cadenceCount = 0;
