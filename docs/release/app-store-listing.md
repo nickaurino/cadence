@@ -18,7 +18,7 @@ Alternates if you want a different angle:
 - `Music timed to your steps`  (25)
 
 ## Promotional text (170 max — editable anytime, no review)
-`Cadence finds songs whose beat lands on your stride, then keeps the music matched as you speed up or slow down. Pick a vibe, start moving, and let the playlist keep your pace.`  (169)
+`Cadence finds songs whose beat lands on your stride and keeps the music matched as you speed up or slow down. Pick a vibe, start moving, and let it keep your pace.`  (163)
 
 ## Keywords (100 max, comma-separated, no spaces)
 `running,walking,tempo,bpm,music,runner,jogging,treadmill,workout,pace,steps,beat,fitness,playlist`  (97)
@@ -27,27 +27,18 @@ Notes: "cadence" is omitted on purpose — Apple already indexes your app name,
 so repeating it wastes characters. Brand terms (e.g. "apple music") are left out
 to avoid trademark-keyword rejections.
 
-## Description (4000 max)
+## Description (4000 max) — conversational prose, no caps headers or bullets
 
 ```
 Cadence plays music that matches how you move.
 
-As you walk or run, Cadence reads your step rate and finds songs from Apple Music whose tempo lands on your stride. Speed up or slow down and the music follows, so the beat stays with your feet.
+Start a session and Cadence reads your steps, then pulls songs from Apple Music whose tempo lands on your stride. Speed up and the music speeds up with you. Slow down and it eases back. The beat stays with your feet, so you can stop thinking about the playlist and just go.
 
-No setup and no playlists to build. Pick a vibe, start moving, and Cadence does the matching for you.
+There's nothing to set up. Pick a vibe, start moving, and the matching happens on its own. When you'd rather take the wheel, set a pace by hand for the treadmill, lock a tempo to hold it steady, or recalibrate any time the match drifts.
 
-WHAT YOU GET
-- Music matched to your real-time cadence, from your own Apple Music library and catalog
-- Songs that re-match automatically when your pace changes
-- A clean, focused session screen built for moving, not fiddling
-- Manual pace mode for the treadmill, or when you want to set the beat yourself
-- Pace lock to hold a tempo, and recalibrate any time
+Playback uses your Apple Music subscription. You can still see your cadence without one, but matched songs play through Apple Music.
 
-APPLE MUSIC
-Playback uses your Apple Music subscription. Pace detection works without one, so you can still see your cadence, but matched songs play through Apple Music.
-
-PRIVATE BY DESIGN
-Cadence works entirely on your device. It reads your steps to match music and nothing else. No accounts, no analytics, no tracking, and nothing leaves your phone.
+Cadence runs entirely on your phone. It reads your steps to find the right music and does nothing else with them. No account, no analytics, no tracking, and nothing leaves your device.
 
 Lace up and let the music keep your pace.
 ```
